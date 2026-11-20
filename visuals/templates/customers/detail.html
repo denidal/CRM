@@ -1,0 +1,215 @@
+{% extends "base.html" %} {% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ customer.otel_adi }}</h1>
+    <div class="page-meta">
+      Müşteri ID #{{ customer.id }} {% if customer.musteri_no %} ·
+      <span class="badge blue">{{ customer.musteri_no }}</span>{% endif %}
+    </div>
+  </div>
+  <div class="toolbar" style="margin: 0">
+    <a class="btn green" href="/contracts/new?customer_id={{ customer.id }}">+ Yeni Sözleşme / Hizmet Ekle</a>
+    <a class="btn ghost" href="/customers">Liste</a>
+  </div>
+</div>
+
+<!-- ABONE REHBER KAYITLARI -->
+<section class="panel">
+  <div class="panel-head"><h2>Abone Rehber Kayıtları</h2></div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Hat No</th>
+        <th>POP</th>
+        <th>RADIUS Kullanıcı</th>
+        <th>IP Adresi</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in abone_rows %}
+      <tr>
+        <td>{{ r.HAT_NO or '—' }}</td>
+        <td>{{ r.POP or '—' }}</td>
+        <td>{{ r.RADIUS_KULLANICI or '—' }}</td>
+        <td>{{ r.IP_ADRESI or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="4" class="muted">Bu müşteri için abone rehber kaydı yok.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<!-- TEMEL BİLGİLER -->
+<section class="panel">
+  <div class="panel-head"><h2>Temel Bilgiler</h2></div>
+  <div class="grid-2">
+    <div><strong>İŞLETME ADI:</strong> {{ customer.otel_adi or '—' }}</div>
+    <div><strong>ÜNVAN:</strong> {{ customer.firma_unvan or '—' }}</div>
+  </div>
+</section>
+
+<!-- ABONE BİLGİLERİ -->
+<section class="panel">
+  <div class="panel-head"><h2>Abone Bilgileri</h2></div>
+  <div class="grid-3">
+    <div><strong>ABONE ADI:</strong> {{ customer.yetkili_adi or '—' }}</div>
+    <div><strong>ABONE SOYADI:</strong> {{ customer.yetkili_soyadi or '—' }}</div>
+    <div><strong>E-POSTA:</strong> {{ customer.irtibat_yetkili_email or '—' }}</div>
+    <div><strong>İRTİBAT TELEFONU:</strong> {{ customer.irtibat_yetkili_telefon or '—' }}</div>
+    <div><strong>ABONE E-POSTA:</strong> {{ customer.abone_email or '—' }}</div>
+    <div><strong>KURUM YETKİLİ TELEFON:</strong> {{ customer.tesis_telefon or '—' }}</div>
+    <div><strong>TC KİMLİK NO:</strong> {{ customer.tc_kimlik_no or '—' }}</div>
+    <div><strong>KİMLİK SERİ NO:</strong> {{ customer.kimlik_seri_no or '—' }}</div>
+    <div><strong>MÜŞTERİ TİPİ (BTK):</strong> {{ customer.musteri_tipi or '—' }}</div>
+    <div><strong>ABONE UYRUK:</strong> {{ customer.abone_uyruk or 'TUR' }}</div>
+    <div><strong>KİMLİK TİPİ (BTK):</strong> {{ customer.abone_kimlik_tipi or '—' }}</div>
+    <div><strong>KİMLİK AİDİYETİ:</strong> {{ customer.abone_kimlik_aidiyeti or '—' }}</div>
+  </div>
+</section>
+
+<!-- 📍 LOKASYONLAR VE HER LOKASYONA ÖZEL ÜRÜNLER -->
+<section class="panel" id="addresses">
+  <div class="panel-head">
+    <h2>Adres ve Lokasyon Bilgileri</h2>
+    <span class="muted">Her tesisin kendi adresi ve hemen altında o tesise özel ürünler yer alır</span>
+  </div>
+
+  {% for a in addresses %}
+  <div
+    class="panel"
+    style="background: #f9fafb; border: 1px solid #e2e8f0; margin-bottom: 1.5rem; padding: 1.25rem; border-radius: 8px">
+    <!-- LOKASYON BAŞLIĞI VE İŞLEMLERİ -->
+    <div class="toolbar" style="margin-bottom: 0.75rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 0.5rem">
+      <div>
+        <strong style="font-size: 1.1rem; color: #0f172a">📍 {{ a.label or ('Lokasyon #' ~ a.id) }}</strong>
+        {% if a.is_primary %}<span class="badge ok" style="margin-left: 8px">Ana Lokasyon</span>{% endif %}
+      </div>
+      <div class="toolbar" style="margin: 0">
+        <a class="btn ghost sm green" href="/contracts/new?customer_id={{ customer.id }}&address_id={{ a.id }}"
+          >+ Bu Lokasyona Ürün Ekle</a
+        >
+        <form
+          method="post"
+          action="/customers/{{ customer.id }}/addresses/{{ a.id }}/delete"
+          style="display: inline; margin-left: 4px"
+          onsubmit="return confirm('Bu lokasyon ve bağlı veriler silinsin mi?');">
+          <button class="btn ghost sm red" type="submit">Sil</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ADRES DETAY ALANLARI -->
+    <div style="font-size: 0.9rem; margin-bottom: 1rem; color: #334155">
+      <div><strong>OTEL ADRESİ:</strong> {{ a.otel_adres or '—' }}</div>
+      <div class="grid-3" style="margin-top: 0.5rem">
+        <div><strong>İL:</strong> {{ a.il or '—' }}</div>
+        <div><strong>İLÇE:</strong> {{ a.ilce or '—' }}</div>
+        <div><strong>MAHALLE:</strong> {{ a.mahalle or '—' }}</div>
+        <div><strong>SOKAK/CADDE:</strong> {{ a.sokak_cadde or '—' }}</div>
+        <div><strong>DIŞ KAPI NO:</strong> {{ a.dis_kapi_no or '—' }}</div>
+        <div><strong>İÇ KAPI NO:</strong> {{ a.ic_kapi_no or '—' }}</div>
+        <div><strong>ADRES KODU:</strong> <span class="badge blue">{{ a.adres_kodu or '—' }}</span></div>
+      </div>
+    </div>
+
+    <!-- 📦 BU LOKASYONA AİT ÜRÜNLER / HİZMETLER -->
+    <div style="background: #fff; padding: 1rem; border-radius: 6px; border: 1px solid #cbd5e1">
+      <div style="font-size: 0.95rem; font-weight: 600; margin-bottom: 0.5rem; color: #1e293b">
+        📦 Bu Lokasyona Ait Ürünler ve Hizmetler:
+      </div>
+
+      {% set loc_services = services | selectattr("address_id", "equalto", a.id) | list %} {% if loc_services %}
+      <table class="table" style="font-size: 0.85rem; margin: 0">
+        <thead>
+          <tr>
+            <th>Ürün / Hizmet Adı</th>
+            <th>Hat No</th>
+            <th>Fiyat / Tarife</th>
+            <th>Durum</th>
+            <th style="text-align: right">İşlem</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in loc_services %}
+          <tr>
+            <td><strong>{{ s.product_name or s.hizmet_turu or 'Katalog Ürünü' }}</strong></td>
+            <td><span class="badge ok">{{ s.hat_no or '—' }}</span></td>
+            <td>{{ s.price or 0 }} {{ s.currency or 'TRY' }}</td>
+            <td><span class="badge blue">{{ s.durum or 'Aktif' }}</span></td>
+            <td style="text-align: right">
+              <a class="btn ghost sm" href="/contracts/{{ s.id }}/edit">✏️ Düzenle</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="muted" style="margin: 0; font-size: 0.85rem">Bu lokasyona atanmış herhangi bir ürün bulunmuyor.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <p class="muted">Kayıtlı lokasyon bulunmuyor.</p>
+  {% endfor %}
+
+  <!-- Yeni Lokasyon Ekleme Formu -->
+  <form
+    method="post"
+    action="/customers/{{ customer.id }}/addresses"
+    class="panel"
+    style="background: #fff; margin-top: 1rem; border: 1px dashed #cbd5e1">
+    <h3 class="section-title" style="margin-top: 0">➕ Yeni Lokasyon Ekle</h3>
+    <div class="grid-3">
+      <div class="field">
+        <label>Etiket (Örn: Merkez Şube)</label><input name="label" placeholder="Merkez Tesis" required />
+      </div>
+      <div class="field"><label>İl</label><input name="il" /></div>
+      <div class="field"><label>İlçe</label><input name="ilce" /></div>
+      <div class="field"><label>Mahalle</label><input name="mahalle" /></div>
+      <div class="field"><label>Sokak / Cadde</label><input name="sokak_cadde" /></div>
+      <div class="field"><label>Dış Kapı No</label><input name="dis_kapi_no" /></div>
+      <div class="field"><label>İç Kapı No</label><input name="ic_kapi_no" /></div>
+      <div class="field"><label>Adres Kodu</label><input name="adres_kodu" /></div>
+      <div class="field"><label>Posta Kodu</label><input name="posta_kodu" /></div>
+    </div>
+    <div class="field"><label>Açık Adres</label><textarea name="otel_adres" rows="2"></textarea></div>
+    <label class="hint"><input type="checkbox" name="is_primary" value="1" /> Ana lokasyon yap</label>
+    <div class="toolbar" style="margin-top: 0.75rem"><button class="btn" type="submit">Lokasyonu Kaydet</button></div>
+  </form>
+</section>
+
+<!-- VERGİ BİLGİLERİ -->
+<section class="panel">
+  <div class="panel-head"><h2>Vergi Bilgileri</h2></div>
+  <div class="grid-2">
+    <div><strong>VERGİ DAİRESİ:</strong> {{ customer.vergi_dairesi or '—' }}</div>
+    <div><strong>VERGİ NUMARASI:</strong> {{ customer.vergi_no or '—' }}</div>
+  </div>
+</section>
+
+<!-- MÜŞTERİ DOSYALARI -->
+<section class="panel">
+  <div class="panel-head"><h2>Müşteri Dosyaları</h2></div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Belge</th>
+        <th>Tür</th>
+        <th>İşlem</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in files %}
+      <tr>
+        <td>{{ f.name }}</td>
+        <td><span class="badge muted">{{ f.type }}</span></td>
+        <td><span class="muted">Yükleme yakında</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

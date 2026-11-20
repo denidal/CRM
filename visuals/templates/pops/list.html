@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>POP listesi</h1>
+<p class="hint">Teknik kaynak. Müşteri üstünde değil; hizmete isteğe bağlı bağlanır.</p>
+<table class="table">
+  <thead>
+    <tr><th>Kod</th><th>Ad</th><th>Lokasyon</th><th>Durum</th></tr>
+  </thead>
+  <tbody>
+    {% for p in pops %}
+    <tr>
+      <td>{{ p.pop_kodu }}</td>
+      <td>{{ p.pop_adi }}</td>
+      <td>{{ p.lokasyon or (p.il or '') }}</td>
+      <td>{{ p.durum or '—' }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" class="muted">POP kaydı yok.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

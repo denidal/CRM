@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{% if sale %}Sözleşme Düzenle{% else %}Yeni Sözleşme{% endif %}</h1>
+    <p class="page-meta">Müşteri hiyerarşisine bağlı hizmet satışı</p>
+  </div>
+  <a class="btn ghost" href="/contracts">Liste</a>
+</div>
+
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+<form method="post" class="panel">
+  <div class="grid-2">
+    <div class="field">
+      <label>Otel / Müşteri Adı *</label>
+      <select name="customer_id" required {% if sale %}disabled{% endif %}>
+        {% for c in customers %}
+        <option value="{{ c.id }}" {% if (sale and sale.customer_id==c.id) or (selected_customer_id and selected_customer_id==c.id) %}selected{% endif %}>
+          {{ c.otel_adi }} (#{{ c.id }})
+        </option>
+        {% endfor %}
+      </select>
+      {% if sale %}<input type="hidden" name="customer_id" value="{{ sale.customer_id }}" />{% endif %}
+    </div>
+    <div class="field">
+      <label>Hizmet Tipi *</label>
+      <select name="service_type" id="service_type">
+        <option value="hotspot" {% if not sale or sale.service_type=='hotspot' %}selected{% endif %}>Hotspot</option>
+        <option value="internet" {% if sale and sale.service_type=='internet' %}selected{% endif %}>İnternet</option>
+        <option value="interfiber" {% if sale and sale.service_type=='interfiber' %}selected{% endif %}>Interfiber</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="field">
+      <label>Fiyat *</label>
+      <input name="fiyat" type="number" step="0.01" required value="{{ sale.fiyat if sale and sale.fiyat is not none else '' }}" />
+    </div>
+    <div class="field">
+      <label>Para Birimi</label>
+      <select name="para_birimi">
+        {% for cur in ['TL','USD','EUR'] %}
+        <option value="{{ cur }}" {% if (sale and sale.para_birimi==cur) or (not sale and cur=='TL') %}selected{% endif %}>{{ cur }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label>İnternet Hızı</label>
+      <select name="internet_hiz">
+        <option value="">—</option>
+        {% for h in hizler %}
+        <option value="{{ h }}" {% if sale and sale.internet_hiz==h %}selected{% endif %}>{{ h }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="field">
+      <label>Sözleşme Numarası</label>
+      <input name="sozlesme_no" value="{{ sale.sozlesme_no if sale else '' }}" />
+    </div>
+    <div class="field">
+      <label>Sözleşme Tarihi (YYYY-MM-DD)</label>
+      <input type="date" name="sozlesme_baslangic_tarihi" id="sozlesme_baslangic_tarihi"
+             value="{{ sale.sozlesme_baslangic_tarihi if sale and sale.sozlesme_baslangic_tarihi else today }}" />
+    </div>
+    <div class="field">
+      <label>Durum</label>
+      <select name="contract_durum">
+        {% for st in ['onaylandı','tekliflendirildi','kabul_edilmedi','bitti'] %}
+        <option value="{{ st }}" {% if sale and sale.contract_durum==st %}selected{% endif %}>{{ st }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="field">
+      <label>Paket Adı</label>
+      <select name="paket_adi" id="paket_adi">
+        <option value="">—</option>
+        {% for p in paketler %}
+        <option value="{{ p }}" {% if sale and sale.paket_adi==p %}selected{% endif %}>{{ p }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label>Süre</label>
+      <select name="sozlesme_suresi" id="sozlesme_suresi">
+        {% for d in sureler %}
+        <option value="{{ d }}" {% if (sale and sale.sozlesme_suresi==d) or (not sale and d=='3 Yıl') %}selected{% endif %}>{{ d }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label>Bitiş Tarihi</label>
+      <input type="date" name="sozlesme_bitis_tarihi" id="sozlesme_bitis_tarihi"
+             value="{{ sale.sozlesme_bitis_tarihi if sale and sale.sozlesme_bitis_tarihi else '' }}" />
+      {% if sale %}<div class="hint">Kalan: <span class="badge {{ sale.remaining_tone }}">{{ sale.remaining_label }}</span></div>{% endif %}
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Orijinal Sözleşme No</label>
+    <input name="orijinal_sozlesme_no" value="{{ sale.orijinal_sozlesme_no if sale else '' }}" />
+  </div>
+
+  <div class="toolbar">
+    <button class="btn" type="submit">Kaydet</button>
+    {% if sale %}
+    <a class="btn ghost" href="/contracts/{{ sale.id }}/auto">Otomatik Sözleşme</a>
+    {% endif %}
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>if (window.mtsBindContractDates) window.mtsBindContractDates();</script>
+{% endblock %}

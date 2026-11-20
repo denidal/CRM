@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Yeni Müşteri</h1>
+    <div class="page-meta">Genel müşteri kartı · adresler ayrı eklenir (çoklu tesis destekli)</div>
+  </div>
+  <a class="btn ghost" href="/customers">Liste</a>
+</div>
+
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+<form method="post" action="/customers/new" class="panel">
+  <h2>Temel Bilgiler</h2>
+  <div class="grid-2">
+    <div class="field"><label>Müşteri / İşletme Adı *</label><input name="otel_adi" required /></div>
+    <div class="field"><label>Ünvan / Firma</label><input name="firma_unvan" /></div>
+    <div class="field"><label>Müşteri No</label><input name="musteri_no" placeholder="MST001" /></div>
+  </div>
+
+  <div class="section-title">Abone Bilgileri</div>
+  <div class="grid-3">
+    <div class="field"><label>Ad</label><input name="yetkili_adi" /></div>
+    <div class="field"><label>Soyad</label><input name="yetkili_soyadi" /></div>
+    <div class="field"><label>E-posta</label><input name="irtibat_yetkili_email" type="email" /></div>
+    <div class="field"><label>Telefon</label><input name="irtibat_yetkili_telefon" /></div>
+    <div class="field"><label>Abone E-posta</label><input name="abone_email" type="email" /></div>
+    <div class="field"><label>Kurum Telefon</label><input name="tesis_telefon" /></div>
+    <div class="field"><label>TCKN</label><input name="tc_kimlik_no" maxlength="11" /></div>
+    <div class="field"><label>Kimlik Seri No</label><input name="kimlik_seri_no" /></div>
+    <div class="field">
+      <label>Müşteri Tipi (BTK)</label>
+      <select name="musteri_tipi">
+        <option value="">—</option>
+        {% for t, label in musteri_tipleri %}
+        <option value="{{ t }}">{{ t }} — {{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="section-title">Vergi</div>
+  <div class="grid-2">
+    <div class="field"><label>Vergi Dairesi</label><input name="vergi_dairesi" /></div>
+    <div class="field"><label>Vergi No</label><input name="vergi_no" /></div>
+  </div>
+
+  <div class="section-title">İlk Adres (opsiyonel — sonra daha fazla eklenebilir)</div>
+  <div class="grid-3">
+    <div class="field"><label>Etiket</label><input name="addr_label" value="Ana Adres" /></div>
+    <div class="field"><label>İl</label><input name="addr_il" /></div>
+    <div class="field"><label>İlçe</label><input name="addr_ilce" /></div>
+    <div class="field"><label>Mahalle</label><input name="addr_mahalle" /></div>
+    <div class="field"><label>Sokak / Cadde</label><input name="addr_sokak_cadde" /></div>
+    <div class="field"><label>Dış Kapı</label><input name="addr_dis_kapi_no" /></div>
+    <div class="field"><label>İç Kapı</label><input name="addr_ic_kapi_no" /></div>
+    <div class="field"><label>Adres Kodu</label><input name="addr_adres_kodu" /></div>
+    <div class="field"><label>Posta Kodu</label><input name="addr_posta_kodu" /></div>
+  </div>
+  <div class="field"><label>Açık Adres</label><textarea name="addr_otel_adres" rows="2"></textarea></div>
+
+  <button class="btn" type="submit">Müşteri oluştur</button>
+</form>
+{% endblock %}

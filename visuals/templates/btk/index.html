@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>BTK</h1>
+    <div class="page-meta">Uyumluluk · abone rehber, oturum, log ve IP blok</div>
+  </div>
+</div>
+
+<nav class="btk-tabs">
+  <a class="{% if tab=='abone' %}active{% endif %}" href="/btk?tab=abone">Abone Rehber</a>
+  <a class="{% if tab=='oturum' %}active{% endif %}" href="/btk?tab=oturum">ISS Oturum</a>
+  <a class="{% if tab=='logs' %}active{% endif %}" href="/btk?tab=logs">BTK Logları</a>
+  <a class="{% if tab=='ipblok' %}active{% endif %}" href="/btk?tab=ipblok">IP Blok Logları</a>
+</nav>
+
+{% if tab == 'abone' %}
+<section class="panel">
+  <div class="panel-head"><h2>Abone Rehber</h2></div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Hat No</th>
+        <th>Müşteri</th>
+        <th>Abone</th>
+        <th>TC / Vergi</th>
+        <th>Hat Durumu</th>
+        <th>Başlangıç</th>
+        <th>Bitiş</th>
+        <th>İşlem</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in abone_rows %}
+      <tr>
+        <td>{{ r.hat_no or '—' }}</td>
+        <td>
+          {% if r.customer_id %}<a href="/customers/{{ r.customer_id }}">{{ r.customer_name }}</a>
+          {% else %}{{ r.customer_name or '—' }}{% endif %}
+        </td>
+        <td>{{ r.subscriber or '—' }}</td>
+        <td>{{ r.tc_vergi or '—' }}</td>
+        <td>{{ r.line_status or '—' }}</td>
+        <td>{{ r.start or '—' }}</td>
+        <td>{{ r.end or '—' }}</td>
+        <td>
+          {% if r.service_id %}<a class="btn sm ghost" href="/contracts/{{ r.service_id }}/edit">Aç</a>
+          {% elif r.customer_id %}<a class="btn sm ghost" href="/customers/{{ r.customer_id }}">Müşteri</a>
+          {% else %}<span class="muted">—</span>{% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="muted">Kayıt yok. Hizmetlere hat no ekleyin veya BTK abone rehber üretin.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{% if tab == 'oturum' %}
+<section class="panel">
+  <div class="panel-head">
+    <h2>ISS Oturum</h2>
+    <div class="toolbar" style="margin:0">
+      <button class="btn" type="button" onclick="runJob('oturum')">Kaydet ve Dosya Oluştur</button>
+      <a class="btn ghost" href="/btk?tab=oturum">Yenile</a>
+    </div>
+  </div>
+  <form class="search-bar" method="get" action="/btk">
+    <input type="hidden" name="tab" value="oturum" />
+    <select name="range">
+      <option>Son 1 saat</option>
+      <option>Son 2 saat</option>
+      <option>Son 6 saat</option>
+      <option>Son 12 saat</option>
+      <option>Son 24 saat</option>
+    </select>
+    <select name="session_status">
+      <option>Tümü</option>
+      <option>Start</option>
+      <option>End</option>
+      <option>Update</option>
+    </select>
+    <select name="user"><option>Tüm kullanıcılar</option></select>
+    <input type="search" name="q" value="{{ q }}" placeholder="Ara..." />
+    <button class="btn ghost" type="submit">Filtrele</button>
+  </form>
+  <p class="hint">Faz 0: oturum satırları RADIUS AAA’dan gelir. Aşağıdaki buton log dosyasını üretir.</p>
+  <div id="msg" class="hint"></div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Kullanıcı</th><th>IP</th><th>Durum</th><th>Başlangıç</th>
+        <th>Log Tarihi</th><th>Süre</th><th>Upload</th><th>Download</th><th>Session ID</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td colspan="9" class="muted">RADIUS bağlı değilse oturum satırı boş kalır. Worker / API ile dosya üretilebilir.</td></tr>
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{% if tab == 'logs' %}
+<section class="panel">
+  <div class="panel-head">
+    <h2>BTK Logları</h2>
+    <a class="btn ghost" href="/btk?tab=logs">Yenile</a>
+  </div>
+  <form class="search-bar" method="get" action="/btk">
+    <input type="hidden" name="tab" value="logs" />
+    <select name="log_type">
+      <option value="">Tümü</option>
+      <option value="abone_rehber" {% if log_type=='abone_rehber' %}selected{% endif %}>Abone Rehber</option>
+      <option value="abone_hareket" {% if log_type=='abone_hareket' %}selected{% endif %}>Abone Hareket</option>
+      <option value="oturum" {% if log_type=='oturum' %}selected{% endif %}>Oturum</option>
+      <option value="ip_block" {% if log_type=='ip_block' %}selected{% endif %}>IP Blok</option>
+    </select>
+    <input type="search" name="q" value="{{ q }}" placeholder="Dosya adına göre ara..." />
+    <button class="btn ghost" type="submit">Filtrele</button>
+  </form>
+  <div class="toolbar">
+    <button class="btn ghost" type="button" onclick="runJob('oturum')">Oturum</button>
+    <button class="btn ghost" type="button" onclick="runJob('abone_hareket')">Abone Hareket</button>
+    <button class="btn ghost" type="button" onclick="runJob('abone_rehber')">Abone Rehber</button>
+    <button class="btn ghost" type="button" onclick="runJob('ip_block')">IP Blok</button>
+  </div>
+  <div id="msg" class="hint"></div>
+  <table class="table">
+    <thead>
+      <tr><th>Dosya</th><th>Tip</th><th>Kayıt</th><th>FTP</th><th>SFTP</th><th>Oluşturma</th><th>İşlem</th></tr>
+    </thead>
+    <tbody>
+      {% for o in operations %}
+      <tr>
+        <td>{{ o.file_name if o is mapping else o.file_name }}</td>
+        <td>{{ o.log_type if o is mapping else o.log_type }}</td>
+        <td>{{ o.record_count if o is mapping else o.record_count }}</td>
+        <td>{{ '✓' if (o.ftp_uploaded if o is mapping else o.ftp_uploaded) else '—' }}</td>
+        <td>{{ '✓' if (o.sftp_uploaded if o is mapping else o.sftp_uploaded) else '—' }}</td>
+        <td class="muted">{{ o.created_at if o is mapping else o.created_at }}</td>
+        <td><span class="muted">—</span></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="muted">Henüz log yok.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{% if tab == 'ipblok' %}
+<section class="panel">
+  <div class="panel-head">
+    <h2>IP Blok Logları</h2>
+    <div class="toolbar" style="margin:0">
+      <button class="btn" type="button" onclick="runJob('ip_block')">Manuel Log Gönder</button>
+      <a class="btn ghost" href="/api/btk/preview/ip-block" target="_blank">BTK Export</a>
+      <a class="btn green" href="/btk?tab=ipblok">Yeni IP Blok</a>
+    </div>
+  </div>
+  <form class="search-bar" method="get" action="/btk">
+    <input type="hidden" name="tab" value="ipblok" />
+    <input type="search" name="q" value="{{ q }}" placeholder="IP / lokasyon ara..." />
+    <button class="btn ghost" type="submit">Ara</button>
+  </form>
+  <div id="msg" class="hint"></div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Operatör</th><th>IP Başlangıç</th><th>IP Bitiş</th><th>Hizmet Tipi</th>
+        <th>NAT</th><th>Tahsis Başlangıç</th><th>Tahsis Bitiş</th><th>Tip</th><th>Lokasyon</th><th>İşlem</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in ip_blocks %}
+      <tr>
+        <td>{{ b.operator or '—' }}</td>
+        <td>{{ b.ip_start or '—' }}</td>
+        <td>{{ b.ip_end or '—' }}</td>
+        <td>{{ b.service_type or '—' }}</td>
+        <td>{{ b.nat_application or '—' }}</td>
+        <td>{{ b.allocation_start_date or '—' }}</td>
+        <td>{{ b.allocation_end_date or '—' }}</td>
+        <td>{{ b.ip_block_type or '—' }}</td>
+        <td>{{ b.usage_location or '—' }}</td>
+        <td><span class="muted">—</span></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="10" class="muted">IP blok kaydı yok.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function runJob(job) {
+  var msg = document.getElementById('msg');
+  if (msg) msg.textContent = job + ' çalışıyor…';
+  try {
+    var res = await fetch('/api/btk/run/' + job, { method: 'POST' });
+    var data = await res.json();
+    if (msg) msg.textContent = data.message || data.detail || JSON.stringify(data);
+    if (data.success) setTimeout(function () { location.reload(); }, 800);
+  } catch (err) {
+    if (msg) msg.textContent = String(err);
+  }
+}
+</script>
+{% endblock %}

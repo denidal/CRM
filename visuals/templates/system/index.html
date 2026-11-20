@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Sistem</h1>
+    <p class="page-meta">RADIUS, POP ve altyapı ayarları</p>
+  </div>
+</div>
+<section class="stat-shell">
+  <div class="stats">
+    <a class="stat-card" href="/radius">
+      <div class="stat-icon blue">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
+      </div>
+      <div>
+        <h3 class="stat-title">RADIUS</h3>
+        <div class="stat-count">AAA entegrasyonu</div>
+        <div class="stat-lines blue">Kullanıcıyı hizmete bağla</div>
+      </div>
+    </a>
+    <a class="stat-card" href="/pops">
+      <div class="stat-icon purple">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
+      </div>
+      <div>
+        <h3 class="stat-title">POP</h3>
+        <div class="stat-count">Altyapı noktaları</div>
+        <div class="stat-lines purple">Hizmete opsiyonel bağlanır</div>
+      </div>
+    </a>
+    <a class="stat-card" href="/btk">
+      <div class="stat-icon green">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+      </div>
+      <div>
+        <h3 class="stat-title">BTK</h3>
+        <div class="stat-count">Log otomasyonu</div>
+        <div class="stat-lines green">Worker & dosya transferi</div>
+      </div>
+    </a>
+  </div>
+</section>
+<section class="panel">
+  <h2>RADIUS senkron notu</h2>
+  <p class="hint">
+    Abone / hat parametreleri güncellendiğinde sistem ServiceSale üzerindeki
+    <code>radius_username</code>, <code>hat_no</code> ve <code>pop_id</code> alanlarını günceller;
+    RADIUS sunucusuna AAA profil yazımı <code>RadiusService.attach_to_service</code> üzerinden tetiklenir.
+  </p>
+</section>
+{% endblock %}

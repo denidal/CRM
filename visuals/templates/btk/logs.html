@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>BTK</h1>
+    <div class="page-meta">Faz 0 — abone rehber, log üretimi ve transfer iskeleti</div>
+  </div>
+</div>
+
+<section class="home-cta">
+  <a class="cta-btn" href="/iss">Abone Rehber</a>
+  <a class="cta-btn" href="/iss?view=ozet">Abone Rehber Özet</a>
+  <a class="cta-btn" href="/btk#logs">BTK Logları</a>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Faz 0 işleri</h2></div>
+  <p class="hint">
+    Worker: <code>python -m system.workers.btk_log_worker</code>
+    · Tek sefer: <code>--once oturum|abone_hareket|abone_rehber|ip_block</code>
+  </p>
+  <div class="toolbar">
+    <button class="btn" type="button" onclick="runJob('oturum')">Oturum</button>
+    <button class="btn ghost" type="button" onclick="runJob('abone_hareket')">Abone Hareket</button>
+    <button class="btn ghost" type="button" onclick="runJob('abone_rehber')">Abone Rehber</button>
+    <button class="btn ghost" type="button" onclick="runJob('ip_block')">IP Blok</button>
+  </div>
+  <div id="msg" class="hint"></div>
+</section>
+
+<section class="panel" id="logs">
+  <div class="panel-head"><h2>Son operasyonlar</h2></div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Tip</th>
+        <th>Dosya</th>
+        <th>Kayıt</th>
+        <th>FTP</th>
+        <th>SFTP</th>
+        <th>Zaman</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in operations %}
+      <tr>
+        <td>{{ o.id }}</td>
+        <td>{{ o.log_type }}</td>
+        <td>{{ o.file_name }}</td>
+        <td>{{ o.record_count }}</td>
+        <td>{{ '✓' if o.ftp_uploaded else '—' }}</td>
+        <td>{{ '✓' if o.sftp_uploaded else '—' }}</td>
+        <td class="muted">{{ o.created_at }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="muted">Henüz operasyon yok (Faz 0 iskeleti hazır).</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function runJob(job) {
+  var msg = document.getElementById('msg');
+  msg.textContent = job + ' çalışıyor…';
+  try {
+    var res = await fetch('/api/btk/run/' + job, { method: 'POST' });
+    var data = await res.json();
+    msg.textContent = data.message || data.detail || JSON.stringify(data);
+    if (data.success) setTimeout(function () { location.reload(); }, 800);
+  } catch (err) {
+    msg.textContent = String(err);
+  }
+}
+</script>
+{% endblock %}

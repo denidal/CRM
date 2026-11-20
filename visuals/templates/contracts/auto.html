@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Otomatik Sözleşme Modülü</h1>
+    <p>Müşteri + paket parametrelerinden yasal sözleşme taslağı</p>
+  </div>
+  <div class="toolbar" style="margin:0">
+    <button class="btn" onclick="window.print()">Yazdır / PDF</button>
+    <a class="btn ghost" href="/contracts/{{ sale.id }}/edit">Düzenle</a>
+  </div>
+</div>
+
+<article class="contract-preview panel">
+  <h3>HOTSPOT / İNTERNET HİZMET SÖZLEŞMESİ</h3>
+  <p class="muted" style="text-align:center">Sözleşme No: <strong>{{ sale.sozlesme_no or ('SS-' ~ sale.id) }}</strong> · ID #{{ sale.id }}</p>
+
+  <p><strong>1. Taraflar</strong></p>
+  <p>
+    İşbu sözleşme; hizmet sağlayıcı ile
+    <strong>{{ customer.firma_unvan or customer.otel_adi }}</strong>
+    (“Abone / Müşteri”) arasında aşağıdaki şartlarla akdedilmiştir.
+  </p>
+
+  <p><strong>2. Müşteri Bilgileri</strong></p>
+  <ul>
+    <li>İşletme Adı: {{ customer.otel_adi }}</li>
+    <li>Ünvan: {{ customer.firma_unvan or '—' }}</li>
+    <li>Yetkili: {{ customer.yetkili_adi or '' }} {{ customer.yetkili_soyadi or '' }}</li>
+    <li>TC / Vergi No: {{ customer.tc_kimlik_no or customer.vergi_no or '—' }}</li>
+    <li>Adres: {{ customer.otel_adres or '' }} {{ customer.il or '' }} / {{ customer.ilce or '' }}</li>
+    <li>İletişim: {{ customer.irtibat_yetkili_telefon or '—' }} · {{ customer.irtibat_yetkili_email or customer.abone_email or '—' }}</li>
+  </ul>
+
+  <p><strong>3. Hizmet / Paket</strong></p>
+  <ul>
+    <li>Hizmet Tipi: {{ sale.service_type|upper }}</li>
+    <li>Paket: {{ sale.paket_adi or sale.internet_hiz or '—' }}</li>
+    <li>Süre: {{ sale.sozlesme_suresi or '—' }}</li>
+    <li>Başlangıç: {{ sale.sozlesme_baslangic_tarihi or '—' }}</li>
+    <li>Bitiş: {{ sale.sozlesme_bitis_tarihi or '—' }}
+      · <span class="badge {{ sale.remaining_tone }}">{{ sale.remaining_label }}</span>
+    </li>
+    <li>Bedel: {{ sale.money }} (KDV hariç / sözleşmede belirtildiği şekilde)</li>
+  </ul>
+
+  <p><strong>4. Teknik Bağlantı</strong></p>
+  <ul>
+    <li>Hat No: {{ sale.hat_no or '—' }}</li>
+    <li>POP: {{ sale.pop_kodu or '—' }}{% if sale.pop_adi %} — {{ sale.pop_adi }}{% endif %}</li>
+    <li>RADIUS Kullanıcı: {{ sale.radius_username or '—' }}</li>
+  </ul>
+
+  <p><strong>5. Yürürlük</strong></p>
+  <p>
+    Abone, yukarıdaki paket ve süre için hizmet bedelini ödemeyi; sağlayıcı ise
+    Hotspot/İnternet hizmetini ve ilgili 5651 loglama yükümlülüklerini sunmayı kabul eder.
+    Durum: <strong>{{ sale.contract_durum or sale.status }}</strong>
+  </p>
+
+  <div class="grid-2" style="margin-top:2rem">
+    <div>
+      <p>Sağlayıcı</p>
+      <p class="muted">İmza / Kaşe</p>
+    </div>
+    <div>
+      <p>Abone / Yetkili</p>
+      <p class="muted">{{ customer.yetkili_adi or '' }} {{ customer.yetkili_soyadi or '' }}</p>
+    </div>
+  </div>
+</article>
+{% endblock %}

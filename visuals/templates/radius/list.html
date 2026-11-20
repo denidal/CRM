@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar">
+  <h1 style="margin:0;flex:1">RADIUS kullanıcıları</h1>
+  <form method="get" action="/radius">
+    <input name="q" value="{{ q }}" placeholder="username, company…" />
+    <label class="muted"><input type="checkbox" name="unassigned" value="1" {% if unassigned %}checked{% endif %}/> atanmamış</label>
+    <button type="submit">Ara</button>
+  </form>
+</div>
+<p class="hint">RADIUS ve POP müşteriye değil, <strong>ServiceSale</strong> kaydına bağlanır.</p>
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+<div class="grid-2">
+  <section class="panel">
+    <h2>Kullanıcılar ({{ users|length }})</h2>
+    <table class="table">
+      <thead><tr><th>Username</th><th>IP</th><th>Company</th><th>Hat</th></tr></thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td><code>{{ u.username }}</code></td>
+          <td class="muted">{{ u.staticipcm or u.staticipcpe or '—' }}</td>
+          <td>{{ u.company or '—' }}</td>
+          <td>{{ u.hat_no or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="muted">Kayıt yok / RADIUS DB erişilemedi</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>Hizmete bağla</h2>
+    <form method="post" action="/radius/attach">
+      <div class="field">
+        <label>ServiceSale ID *</label>
+        <input name="service_id" type="number" value="{{ service_id or '' }}" required />
+      </div>
+      <div class="field">
+        <label>RADIUS username *</label>
+        <input name="radius_username" list="radius-list" required />
+        <datalist id="radius-list">
+          {% for u in users %}<option value="{{ u.username }}">{% endfor %}
+        </datalist>
+      </div>
+      <div class="field">
+        <label>POP (opsiyonel)</label>
+        <select name="pop_id">
+          <option value="">—</option>
+          {% for p in pops %}
+          <option value="{{ p.id }}">{{ p.pop_kodu }} — {{ p.pop_adi }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit">Bağla</button>
+    </form>
+
+    <h2 style="margin-top:1.25rem">Mevcut atamalar</h2>
+    <table class="table">
+      <thead><tr><th>Hizmet</th><th>RADIUS</th><th>POP</th><th></th></tr></thead>
+      <tbody>
+        {% for a in attachments %}
+        <tr>
+          <td>#{{ a.service_id }} · {{ a.service_type }}</td>
+          <td><code>{{ a.radius_username }}</code></td>
+          <td>{{ a.pop_kodu or '—' }}</td>
+          <td><a href="/services/{{ a.service_id }}/radius">Düzenle</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="muted">Atama yok</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+{% endblock %}

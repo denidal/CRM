@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="hero-title">{{ company_name or 'CRM' }}</h1>
+<p class="hero-sub">Müşteri ve sözleşme özeti</p>
+
+<section class="stat-shell">
+  <div class="stats">
+    <a class="stat-card" href="/customers">
+      <div class="stat-icon purple">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <div>
+        <h3 class="stat-title">Müşteri Listesi</h3>
+        <div class="stat-count">{{ stats.customer_count }} müşteri</div>
+        <div class="stat-lines purple">
+          {% for b in stats.service_breakdown %}
+          {{ b.type }}: {{ b.count }} · {{ b.revenue_label }}<br />
+          {% else %}
+          Henüz hizmet yok<br />
+          {% endfor %}
+          <strong>Toplam: {{ stats.total_revenue_label }}</strong>
+        </div>
+      </div>
+    </a>
+
+    <a class="stat-card" href="/contracts?type=internet">
+      <div class="stat-icon blue">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
+      </div>
+      <div>
+        <h3 class="stat-title">İnternet Sözleşmeleri</h3>
+        <div class="stat-count">{{ stats.internet_count }} aktif sözleşme</div>
+        <div class="stat-lines blue">Hotspot: {{ stats.hotspot_count }} aktif</div>
+      </div>
+    </a>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <span class="warn-dot" aria-hidden="true"></span>
+    <h2>Acil Takip (&lt; 60 gün)</h2>
+  </div>
+  <div class="urgent-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Müşteri</th>
+          <th>Sözleşme No</th>
+          <th>Hizmet</th>
+          <th>Bitiş</th>
+          <th>Kalan Süre</th>
+          <th>Tutar</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in urgent %}
+        <tr class="urgent">
+          <td>
+            <div class="cust-name">{{ row.customer_name }}</div>
+            <div class="cust-code">{{ row.musteri_no }}</div>
+          </td>
+          <td>{{ row.sozlesme_no or ('#' ~ row.id) }}</td>
+          <td>{{ row.service_type }}</td>
+          <td>{{ row.bitis_label }}</td>
+          <td><span class="badge warn">{{ row.remaining_label }}</span></td>
+          <td>{{ row.money }}</td>
+          <td><a class="btn sm" href="/customers/{{ row.customer_id }}">Aç</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="muted">60 gün içinde biten sözleşme yok.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Onay Bekleyenler</h2>
+    <span class="muted">Teklifler ve bekleyen talepler</span>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Müşteri</th>
+        <th>Sözleşme No</th>
+        <th>Hizmet</th>
+        <th>Durum</th>
+        <th>Tutar</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in offers %}
+      <tr>
+        <td>
+          <div class="cust-name">{{ row.customer_name }}</div>
+          <div class="cust-code">{{ row.musteri_no }}</div>
+        </td>
+        <td>{{ row.sozlesme_no or ('#' ~ row.id) }}</td>
+        <td>{{ row.service_type }}</td>
+        <td><span class="badge warn">{{ row.contract_durum or 'teklif' }}</span></td>
+        <td>{{ row.money }}</td>
+        <td><a class="btn sm" href="/contracts/{{ row.id }}/edit">İncele</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="muted">Onay bekleyen kayıt yok.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

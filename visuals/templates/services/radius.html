@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>RADIUS bağla — hizmet #{{ sale.id }}</h1>
+<p class="muted">{{ sale.service_type }} · müşteri #{{ sale.customer_id }} · mevcut: <code>{{ sale.radius_username or '—' }}</code></p>
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+<form method="post" class="panel" style="max-width:560px">
+  <div class="field">
+    <label>RADIUS username</label>
+    <input name="radius_username" list="ru" value="{{ sale.radius_username or '' }}" placeholder="boş = kaldır" />
+    <datalist id="ru">{% for u in users %}<option value="{{ u.username }}">{% endfor %}</datalist>
+  </div>
+  <div class="field">
+    <label>Hat No</label>
+    <input name="hat_no" value="{{ sale.hat_no or '' }}" placeholder="örn. 201810" />
+  </div>
+  <div class="field">
+    <label>POP (opsiyonel)</label>
+    <select name="pop_id">
+      <option value="">—</option>
+      {% for p in pops %}
+      <option value="{{ p.id }}" {% if sale.pop_id == p.id %}selected{% endif %}>{{ p.pop_kodu }} — {{ p.pop_adi }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit">Kaydet</button>
+  <a class="btn ghost" href="/customers/{{ sale.customer_id }}">Geri</a>
+</form>
+{% endblock %}

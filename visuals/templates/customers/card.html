@@ -1,0 +1,6 @@
+<article class="panel">
+  <h3><a href="/customers/{{ c.id }}">{{ c.otel_adi }}</a></h3>
+  <div class="muted">{{ c.firma_unvan or '' }}</div>
+  <div>{{ c.yetkili_adi or '' }} {{ c.yetkili_soyadi or '' }}</div>
+  <div class="badge">{{ c.service_sales|length }} hizmet</div>
+</article>

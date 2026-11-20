@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Hizmet / Abone ekle</h1>
+<p class="muted">Müşteri: <strong>{{ customer.otel_adi }}</strong></p>
+<p class="hint">Önce hizmet bilgileri. POP ve RADIUS isteğe bağlıdır (zorunlu değil).</p>
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+<form method="post" class="panel" style="max-width:720px">
+  <div class="field">
+    <label>Mod</label>
+    <select name="mode" id="mode" onchange="toggleAbone()">
+      <option value="service">Sadece hizmet satışı</option>
+      <option value="abone">Abone + hizmet (ISS)</option>
+    </select>
+  </div>
+
+  <div class="grid-2">
+    <div class="field">
+      <label>Hizmet tipi (ürün)</label>
+      <select name="service_type">
+        <option value="internet">Internet</option>
+        <option value="hotspot">Hotspot</option>
+        <option value="interfiber">Interfiber</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Fiyat *</label>
+      <input name="fiyat" type="number" step="0.01" min="0" required />
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="field">
+      <label>Para birimi</label>
+      <select name="para_birimi">
+        <option value="TL">TL</option>
+        <option value="USD">USD</option>
+        <option value="EUR">EUR</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Paket / hız</label>
+      <input name="paket_adi" placeholder="ör. 100 Mbps" />
+      <input type="hidden" name="internet_hiz" id="internet_hiz" />
+    </div>
+  </div>
+
+  <div id="abone-fields" style="display:none">
+    <h2>Abone (ISS)</h2>
+    <div class="field">
+      <label>BTK hizmet tipi *</label>
+      <select name="hizmet_tipi">
+        <option value="">—</option>
+        {% for kod, ad in hizmet_tipleri.items() %}
+        <option value="{{ kod }}">{{ kod }} — {{ ad }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label>Abone paketi</label>
+      <select name="paket">
+        <option value="">—</option>
+        {% for p in paketler %}
+        <option value="{{ p }}">{{ p }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label>Hat no (boşsa otomatik)</label>
+      <input name="hat_no" />
+    </div>
+  </div>
+
+  <h2>Teknik (opsiyonel)</h2>
+  <p class="hint">POP seçmeden de abone/hizmet oluşturulabilir.</p>
+  <div class="grid-2">
+    <div class="field">
+      <label>POP</label>
+      <select name="pop_id">
+        <option value="">— yok —</option>
+        {% for p in pops %}
+        <option value="{{ p.id }}">{{ p.pop_kodu }} — {{ p.pop_adi }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label>RADIUS kullanıcı adı</label>
+      <input name="radius_username" placeholder="opsiyonel" />
+    </div>
+  </div>
+
+  <button type="submit">Kaydet</button>
+  <a class="btn ghost" href="/customers/{{ customer.id }}">İptal</a>
+</form>
+
+<script>
+function toggleAbone() {
+  const mode = document.getElementById('mode').value;
+  document.getElementById('abone-fields').style.display = mode === 'abone' ? 'block' : 'none';
+}
+</script>
+{% endblock %}

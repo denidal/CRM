@@ -1,0 +1,142 @@
+{% extends "base.html" %} {% block content %}
+<div class="toolbar">
+  <h1 style="margin: 0; flex: 1">Faturalar</h1>
+  <a class="btn" href="/finance/invoices/new">Yeni</a>
+  <a class="btn ghost" href="/finance">Finans</a>
+</div>
+
+<table class="table">
+  <thead>
+    <tr>
+      <th>No</th>
+      <th>Müşteri</th>
+      <th>Tarih</th>
+      <th>Vade</th>
+      <th>Tutar</th>
+      <th>Durum</th>
+      <th style="text-align: right">İşlem</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for i in invoices %}
+    <tr>
+      <td>{{ i.invoice_no }}</td>
+      <td>#{{ i.customer_id }}</td>
+      <td>{{ i.issue_date }}</td>
+      <td>{{ i.due_date }}</td>
+      <td>{{ i.amount }} {{ i.currency }}</td>
+      <td>
+        <span
+          class="badge"
+          style="
+          {% if i.status in ['ONAYLANDI', 'PAID', 'Onaylandı', 'odendi'] %}background: #d1fae5; color: #065f46;
+          {% elif i.status in ['İPTAL EDİLDİ', 'CANCELLED', 'İptal Edildi', 'cancelled'] %}background: #fee2e2; color: #991b1b;
+          {% else %}background: #fef3c7; color: #92400e;{% endif %}
+          padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">
+          {{ i.status }}
+        </span>
+      </td>
+      <td style="text-align: right; position: relative">
+        {% if i.status == 'PENDING' %}
+        <!-- DROPDOWN MENÜ -->
+        <div class="dropdown-container" style="display: inline-block; position: relative">
+          <button
+            type="button"
+            class="btn ghost"
+            onclick="toggleDropdown(event, 'dropdown-{{ i.id }}')"
+            style="padding: 4px 10px; font-size: 12px">
+            İşlemler ▼
+          </button>
+
+          <div
+            id="dropdown-{{ i.id }}"
+            class="dropdown-menu"
+            style="
+              display: none;
+              position: absolute;
+              right: 0;
+              top: 100%;
+              background: #fff;
+              min-width: 150px;
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+              border-radius: 6px;
+              border: 1px solid #e2e8f0;
+              z-index: 100;
+              text-align: left;
+              margin-top: 4px;
+            ">
+            <!-- Ödendi / Onayla -->
+            <form action="/finance/invoices/{{ i.id }}/pay" method="post" style="margin: 0">
+              <button
+                type="submit"
+                style="
+                  width: 100%;
+                  text-align: left;
+                  padding: 10px 14px;
+                  background: none;
+                  border: none;
+                  cursor: pointer;
+                  color: #059669;
+                  font-size: 13px;
+                  font-weight: 500;
+                  border-bottom: 1px solid #f1f5f9;
+                ">
+                ✓ Ödendi İşaretle
+              </button>
+            </form>
+
+            <!-- İptal Et -->
+            <form
+              action="/finance/invoices/{{ i.id }}/cancel"
+              method="post"
+              style="margin: 0"
+              onsubmit="return confirm('Bu faturayı iptal etmek istediğinize emin misiniz?');">
+              <button
+                type="submit"
+                style="
+                  width: 100%;
+                  text-align: left;
+                  padding: 10px 14px;
+                  background: none;
+                  border: none;
+                  cursor: pointer;
+                  color: #dc2626;
+                  font-size: 13px;
+                  font-weight: 500;
+                ">
+                ✕ Faturayı İptal Et
+              </button>
+            </form>
+          </div>
+        </div>
+        {% else %}
+        <span style="color: #64748b; font-size: 12px">İşlem Tamamlandı</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="7" class="muted">Kayıt yok</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<script>
+  function toggleDropdown(event, dropdownId) {
+    event.stopPropagation();
+    document.querySelectorAll(".dropdown-menu").forEach((menu) => {
+      if (menu.id !== dropdownId) menu.style.display = "none";
+    });
+
+    let menu = document.getElementById(dropdownId);
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
+  }
+
+  window.onclick = function () {
+    document.querySelectorAll(".dropdown-menu").forEach((menu) => {
+      menu.style.display = "none";
+    });
+  };
+</script>
+{% endblock %}

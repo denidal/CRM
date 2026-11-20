@@ -1,0 +1,380 @@
+{% extends "base.html" %} {% block content %}
+<div class="toolbar">
+  <h1 style="margin: 0; flex: 1">Yeni Abonelik / Hizmet Tanımlama</h1>
+  <a class="btn ghost" href="/finance/invoices">Faturalara Dön</a>
+</div>
+
+<section class="panel" style="max-width: 700px; margin: 0 auto">
+  <form method="post" action="/finance/invoices/new" id="subscription-form">
+    {% if error %}
+    <div style="background: #fee2e2; color: #991b1b; padding: 10px; border-radius: 6px; margin-bottom: 15px">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <!-- 1. Müşteri Seçimi -->
+    <div class="field mb-3">
+      <label>Müşteri *</label>
+      <select
+        name="customer_id"
+        id="customer-select"
+        class="form-control"
+        required
+        onchange="loadCustomerLocations(this.value)">
+        <option value="">Müşteri Seçin</option>
+        {% for c in customers %}
+        <option value="{{ c.id }}">{{ c.otel_adi }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- 2. Lokasyon Seçimi -->
+    <div class="field mb-3">
+      <label>Lokasyon *</label>
+      <select name="location_id" id="location-select" class="form-control" required>
+        <option value="">Önce müşteri seçin</option>
+      </select>
+    </div>
+
+    <!-- 3. Hizmet Kategorisi Seçimi -->
+    <div class="field mb-3">
+      <label>Hizmet Kategorisi *</label>
+      <select id="service-category" class="form-control" onchange="toggleServiceCategory()" required>
+        <option value="">Kategori Seçin</option>
+        <option value="metro">Metro Ethernet (Hız & Taahhüt Paneli)</option>
+        <option value="others">Diğer Hizmetler (WiFi, P2P, Kabin, IP)</option>
+      </select>
+    </div>
+
+    <!-- 3A. METRO ETHERNET ÖZEL PANELİ -->
+    <div
+      id="metro-panel"
+      style="
+        display: none;
+        background: #f8fafc;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        margin-bottom: 15px;
+      ">
+      <h3 style="margin-top: 0; font-size: 16px; color: #1e293b">Metro Ethernet Tarifesi ve Taahhüt Seçimi</h3>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px" class="mb-3">
+        <div class="field">
+          <label>Hız (Mbps)</label>
+          <select id="metro-speed" class="form-control" onchange="updateMetroPrice()">
+            <option value="" data-price="0">Hız Seçin</option>
+            <option
+              value="100 Mbps Metro"
+              data-standard="{{ prices.get('metro_tarife_100', 5000) }}"
+              data-t12="{{ prices.get('metro_12_100', 4500) }}"
+              data-t24="{{ prices.get('metro_24_100', 4000) }}">
+              100 Mbps
+            </option>
+            <option
+              value="200 Mbps Metro"
+              data-standard="{{ prices.get('metro_tarife_200', 8500) }}"
+              data-t12="{{ prices.get('metro_12_200', 7500) }}"
+              data-t24="{{ prices.get('metro_24_200', 6800) }}">
+              200 Mbps
+            </option>
+            <option
+              value="500 Mbps Metro"
+              data-standard="{{ prices.get('metro_tarife_500', 15000) }}"
+              data-t12="{{ prices.get('metro_12_500', 13500) }}"
+              data-t24="{{ prices.get('metro_24_500', 12000) }}">
+              500 Mbps
+            </option>
+            <option
+              value="1000 Mbps Metro"
+              data-standard="{{ prices.get('metro_tarife_1000', 25000) }}"
+              data-t12="{{ prices.get('metro_12_1000', 22000) }}"
+              data-t24="{{ prices.get('metro_24_1000', 19500) }}">
+              1000 Mbps (1 Gbps)
+            </option>
+            <option
+              value="10000 Mbps Metro"
+              data-standard="{{ prices.get('metro_tarife_10000', 120000) }}"
+              data-t12="{{ prices.get('metro_12_10000', 110000) }}"
+              data-t24="{{ prices.get('metro_24_10000', 95000) }}">
+              10 Gbps
+            </option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Taahhüt Süresi</label>
+          <select id="metro-commitment" class="form-control" onchange="updateMetroPrice()">
+            <option value="standard">Taahhütsüz / Standart Tarife</option>
+            <option value="12">12 Ay Taahhütlü</option>
+            <option value="24">24 Ay Taahhütlü</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3B. DİĞER HİZMETLER DROPDOWN -->
+    <div
+      id="others-panel"
+      style="
+        display: none;
+        background: #f8fafc;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        margin-bottom: 15px;
+      ">
+      <h3 style="margin-top: 0; font-size: 16px; color: #1e293b">Diğer Ürün ve Hizmetler Kataloğu</h3>
+      <div class="field">
+        <label>Hizmet Seçin</label>
+        <select id="others-select" class="form-control" onchange="updateOthersPrice()">
+          <option value="" data-price="0">Hizmet Seçin</option>
+          <optgroup label="WiFi İnternet">
+            <option value="50 Mbps WiFi" data-price="1500">50 Mbps WiFi</option>
+            <option value="100 Mbps WiFi" data-price="2500">100 Mbps WiFi</option>
+          </optgroup>
+          <optgroup label="P2P Kapasite">
+            <option value="100 Mbps P2P" data-price="4000">100 Mbps P2P</option>
+            <option value="500 Mbps P2P" data-price="12000">500 Mbps P2P</option>
+          </optgroup>
+          <optgroup label="Kabin U Barındırma">
+            <option value="8U Kabin" data-price="3000">8 U Kabin</option>
+            <option value="42U Kabin" data-price="12000">42 U Tam Kabin</option>
+          </optgroup>
+          <optgroup label="IP Blok / Subnet">
+            <option value="/30 IP Blok" data-price="1000">/30 IP Blok</option>
+            <option value="/29 IP Blok" data-price="2000">/29 IP Blok</option>
+          </optgroup>
+        </select>
+      </div>
+    </div>
+
+    <input type="hidden" name="product_name" id="final-product-name" />
+
+    <!-- 4. Tutar ve Fiyat Değiştirme Mekanizması -->
+    <div class="field mb-3">
+      <label>Birim Fiyat (TRY) *</label>
+      <div style="display: flex; gap: 10px; align-items: center">
+        <input
+          type="number"
+          step="0.01"
+          name="unit_price"
+          id="unit-price-input"
+          class="form-control"
+          required
+          value="0.00"
+          readonly
+          style="background-color: #f1f5f9; flex: 1"
+          oninput="calculateMonthProration()" />
+
+        <button type="button" class="btn ghost sm" id="toggle-override-btn" onclick="togglePriceOverride()">
+          Fiyatı Değiştir (Override)
+        </button>
+      </div>
+      <small class="text-muted" id="price-mode-info"
+        >Katalogdan otomatik fiyat gelir. Değiştirmek için butona tıklayın.</small
+      >
+    </div>
+
+    <input type="hidden" name="catalog_price" id="hidden-unit-price" value="0" />
+
+    <!-- 5. Tarihler -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px" class="mb-3">
+      <div class="field">
+        <label>Hizmet Başlangıç Tarihi *</label>
+        <input
+          type="date"
+          name="issue_date"
+          id="start-date"
+          class="form-control"
+          required
+          onchange="calculateMonthProration()" />
+      </div>
+      <div class="field">
+        <label>Vade Tarihi (Otomatik 30 Gün) *</label>
+        <input
+          type="date"
+          name="due_date"
+          id="due-date"
+          class="form-control"
+          required
+          style="background-color: #f1f5f9" />
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px" class="mb-3">
+      <div class="field">
+        <label>Miktar</label>
+        <input type="number" name="quantity" class="form-control" value="1" />
+      </div>
+      <div class="field">
+        <label>KDV Oranı (%)</label>
+        <input type="number" name="vat_rate" class="form-control" value="20" />
+      </div>
+    </div>
+
+    <div class="field mb-3">
+      <label>Açıklama</label>
+      <input type="text" name="description" class="form-control" placeholder="Abonelik açıklaması..." />
+    </div>
+
+    <div
+      class="panel"
+      style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px">
+      <h4 style="margin-top: 0; font-size: 14px; color: #334155">Otomatik Yinelenen Fatura & Kıst Özeti:</h4>
+      <p id="proration-summary" style="margin: 5px 0 0 0; font-size: 14px; color: #0f172a">
+        Lütfen müşteri, hizmet ve başlangıç tarihi seçin.
+      </p>
+    </div>
+
+    <button type="submit" class="btn primary w-100">Aboneliği Başlat & İlk Faturayı Kes</button>
+  </form>
+</section>
+
+<script>
+  function loadCustomerLocations(customerId) {
+    let locSelect = document.getElementById("location-select");
+    locSelect.innerHTML = '<option value="">Yükleniyor...</option>';
+
+    setTimeout(() => {
+      locSelect.innerHTML = `
+        <option value="">Lokasyon Seçin</option>
+        <option value="1">Merkez Bina / Kampüs (Lokasyon #1)</option>
+        <option value="2">Şube / Otel Blok B (Lokasyon #2)</option>
+      `;
+    }, 150);
+  }
+
+  function toggleServiceCategory() {
+    let category = document.getElementById("service-category").value;
+    document.getElementById("metro-panel").style.display = category === "metro" ? "block" : "none";
+    document.getElementById("others-panel").style.display = category === "others" ? "block" : "none";
+
+    document.getElementById("unit-price-input").value = "0.00";
+    document.getElementById("hidden-unit-price").value = 0;
+    document.getElementById("final-product-name").value = "";
+    calculateMonthProration();
+  }
+
+  function getActivePriceAndName() {
+    let category = document.getElementById("service-category").value;
+    let price = 0;
+    let name = "";
+
+    if (category === "metro") {
+      let speedSelect = document.getElementById("metro-speed");
+      let opt = speedSelect.options[speedSelect.selectedIndex];
+      let commit = document.getElementById("metro-commitment").value;
+
+      if (opt && opt.value) {
+        name =
+          opt.value +
+          " (" +
+          (commit === "24" ? "24 Ay Taahhütlü" : commit === "12" ? "12 Ay Taahhütlü" : "Standart") +
+          ")";
+        if (commit === "24") price = parseFloat(opt.getAttribute("data-t24")) || 0;
+        else if (commit === "12") price = parseFloat(opt.getAttribute("data-t12")) || 0;
+        else price = parseFloat(opt.getAttribute("data-standard")) || 0;
+      }
+    } else if (category === "others") {
+      let othersSelect = document.getElementById("others-select");
+      let opt = othersSelect.options[othersSelect.selectedIndex];
+      if (opt && opt.value) {
+        name = opt.value;
+        price = parseFloat(opt.getAttribute("data-price")) || 0;
+      }
+    }
+
+    document.getElementById("final-product-name").value = name;
+    document.getElementById("hidden-unit-price").value = price;
+    return price;
+  }
+
+  function updateMetroPrice() {
+    let price = getActivePriceAndName();
+    if (!isOverrideActive) {
+      document.getElementById("unit-price-input").value = price.toFixed(2);
+    }
+    calculateMonthProration();
+  }
+
+  function updateOthersPrice() {
+    let price = getActivePriceAndName();
+    if (!isOverrideActive) {
+      document.getElementById("unit-price-input").value = price.toFixed(2);
+    }
+    calculateMonthProration();
+  }
+
+  let isOverrideActive = false;
+
+  function togglePriceOverride() {
+    isOverrideActive = !isOverrideActive;
+    let priceInput = document.getElementById("unit-price-input");
+    let btn = document.getElementById("toggle-override-btn");
+    let infoText = document.getElementById("price-mode-info");
+
+    if (isOverrideActive) {
+      priceInput.removeAttribute("readonly");
+      priceInput.style.backgroundColor = "#ffffff";
+      priceInput.focus();
+      btn.textContent = "Katalog Fiyatına Dön";
+      btn.className = "btn primary sm";
+      infoText.textContent =
+        "Özel fiyat modu aktif. Yeni tutarı girdiğinizde tüm hesaplamalar buna göre güncellenecektir.";
+    } else {
+      priceInput.setAttribute("readonly", true);
+      priceInput.style.backgroundColor = "#f1f5f9";
+      btn.textContent = "Fiyatı Değiştir (Override)";
+      btn.className = "btn ghost sm";
+      infoText.textContent = "Katalogdan otomatik fiyat gelir. Değiştirmek için butona tıklayın.";
+      updateMetroPrice();
+      updateOthersPrice();
+    }
+  }
+
+  function calculateMonthProration() {
+    let priceInputVal = parseFloat(document.getElementById("unit-price-input").value);
+    let effectivePrice = isNaN(priceInputVal) ? 0 : priceInputVal;
+
+    let startDateVal = document.getElementById("start-date").value;
+    if (!startDateVal) {
+      document.getElementById("proration-summary").innerHTML = "Lütfen müşteri, hizmet ve başlangıç tarihi seçin.";
+      return;
+    }
+
+    let startDate = new Date(startDateVal);
+    let dueDate = new Date(startDate);
+    dueDate.setDate(dueDate.getDate() + 30);
+    document.getElementById("due-date").value = dueDate.toISOString().split("T")[0];
+
+    let year = startDate.getFullYear();
+    let month = startDate.getMonth();
+    let startDay = startDate.getDate();
+
+    let totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+    let activeDays = totalDaysInMonth - startDay + 1;
+    if (activeDays < 0) activeDays = 0;
+
+    let proratedAmount = (effectivePrice / totalDaysInMonth) * activeDays;
+
+    let monthNames = [
+      "Ocak",
+      "Şubat",
+      "Mart",
+      "Nisan",
+      "Mayıs",
+      "Haziran",
+      "Temmuz",
+      "Ağustos",
+      "Eylül",
+      "Ekim",
+      "Kasım",
+      "Aralık",
+    ];
+    let currentMonthName = monthNames[month];
+
+    document.getElementById("proration-summary").innerHTML =
+      `İlk Ay (${currentMonthName} ${year}, ${totalDaysInMonth} gün): ${startDay}. günden ay sonuna <strong>${activeDays} gün</strong> kıst tutar = <strong>${proratedAmount.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL</strong><br>` +
+      `<span style="color: #047857; font-weight: 600;">Sonraki Ay ve Aylarda:</span> Yeni belirlenen tutar (${effectivePrice.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} TL) üzerinden <strong>otomatik yinelenerek</strong> faturalandırılacaktır.`;
+  }
+</script>
+{% endblock %}

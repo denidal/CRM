@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Arşiv</h1>
+    <p>İptal / süresi dolmuş / arşivlenmiş kayıtlar</p>
+  </div>
+</div>
+<section class="panel">
+  <table class="table">
+    <thead>
+      <tr><th>ID</th><th>Müşteri</th><th>Tip</th><th>Bitiş</th><th>Kalan / Durum</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr class="{% if row.days_left is not none and row.days_left < 0 %}expired{% endif %}">
+        <td>#{{ row.id }}</td>
+        <td>{{ row.customer_name }}</td>
+        <td>{{ row.service_type }}</td>
+        <td>{{ row.sozlesme_bitis_tarihi or '—' }}</td>
+        <td><span class="badge {{ row.remaining_tone }}">{{ row.remaining_label }}</span> · {{ row.status }}</td>
+        <td><a class="btn sm" href="/customers/{{ row.customer_id }}">Git</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="muted">Arşiv kaydı yok.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

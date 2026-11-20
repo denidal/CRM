@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar">
+  <h1 style="margin:0;flex:1">Finans</h1>
+  <a class="btn" href="/finance/invoices/new">Yeni fatura</a>
+  <a class="btn secondary" href="/finance/invoices">Faturalar</a>
+  <a class="btn secondary" href="/finance/products">Ürünler</a>
+  <a class="btn secondary" href="/finance/kasa">Kasa</a>
+</div>
+
+<section class="panel">
+  <h2>Cari bakiyeler</h2>
+  <table class="table">
+    <thead><tr><th>Müşteri</th><th>Faturalanan</th><th>Tahsil</th><th>Bakiye</th></tr></thead>
+    <tbody>
+      {% for b in balances %}
+      <tr>
+        <td><a href="/customers/{{ b.customer_id }}">{{ b.customer_name }}</a></td>
+        <td>{{ b.total_invoiced }}</td>
+        <td>{{ b.total_collected }}</td>
+        <td><strong>{{ b.current_balance }}</strong></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="muted">Henüz hareket yok</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="panel" style="margin-top:1rem">
+  <h2>Son faturalar</h2>
+  <table class="table">
+    <thead><tr><th>No</th><th>Müşteri</th><th>Tutar</th><th>Durum</th></tr></thead>
+    <tbody>
+      {% for i in invoices %}
+      <tr>
+        <td>{{ i.invoice_no }}</td>
+        <td>#{{ i.customer_id }}</td>
+        <td>{{ i.amount }} {{ i.currency }}</td>
+        <td><span class="badge">{{ i.status }}</span></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="muted">Fatura yok</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

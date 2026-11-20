@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ title or "Abone Rehber" }}</h1>
+    <p class="page-meta">BTK abone rehberi · API: <code>/api/iss-aboneler</code></p>
+  </div>
+</div>
+<section class="panel">
+  <p class="hint">
+    {% if view == "ozet" %}
+    Abone rehber özet görünümü — veri kaynağı bağlandığında burada listelenir.
+    {% else %}
+    Abone rehber kayıtları API üzerinden çekilir. Detay için müşteri kartındaki hizmetleri kullanın.
+    {% endif %}
+  </p>
+</section>
+{% endblock %}

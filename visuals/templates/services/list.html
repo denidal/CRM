@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Hizmetler — {{ customer.otel_adi }}</h1>
+<div class="service-list">
+  {% for s in services %}
+  {% include "services/card.html" %}
+  {% else %}
+  <p class="muted">Hizmet yok.</p>
+  {% endfor %}
+</div>
+{% endblock %}

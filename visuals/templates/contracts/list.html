@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Sözleşmeler</h1>
+    <p class="page-meta">Müşteri altına bağlı hizmet sözleşmeleri</p>
+  </div>
+  <a class="btn green" href="/contracts/new">+ Yeni sözleşme</a>
+</div>
+
+<div class="toolbar">
+  <form method="get" action="/contracts" style="display:flex;gap:.5rem;flex-wrap:wrap;flex:1">
+    <select name="type">
+      <option value="">Tüm tipler</option>
+      <option value="internet" {% if type=='internet' %}selected{% endif %}>İnternet</option>
+      <option value="hotspot" {% if type=='hotspot' %}selected{% endif %}>Hotspot</option>
+      <option value="interfiber" {% if type=='interfiber' %}selected{% endif %}>Interfiber</option>
+    </select>
+    <label class="muted" style="display:flex;align-items:center;gap:.35rem">
+      <input type="checkbox" name="urgent" value="1" {% if urgent %}checked{% endif %}/> Acil (&lt;60 gün)
+    </label>
+    <button class="btn ghost" type="submit">Filtrele</button>
+  </form>
+</div>
+
+<section class="panel" style="padding:0;overflow:hidden">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Otel / Müşteri</th>
+        <th>Fiyat</th>
+        <th>Hız / Paket</th>
+        <th>Sözleşme No</th>
+        <th>Sözleşme Tarihi</th>
+        <th>Durum</th>
+        <th>İşlemler</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr class="{% if row.days_left is not none and row.days_left < 60 %}urgent{% endif %}">
+        <td>
+          <a class="cust-name" href="/customers/{{ row.customer_id }}">{{ row.customer_name }}</a>
+          <div class="cust-code">{{ row.service_type }}</div>
+        </td>
+        <td>{{ row.money }}</td>
+        <td>{{ row.internet_hiz or row.paket_adi or '—' }}</td>
+        <td>{{ row.sozlesme_no or ('#' ~ row.id) }}</td>
+        <td>{{ row.baslangic_label }}</td>
+        <td><span class="badge {% if row.contract_durum=='onaylandı' %}ok{% else %}warn{% endif %}">{{ row.contract_durum or row.status }}</span></td>
+        <td>
+          <div class="actions">
+            <a class="btn sm ghost" href="/contracts/{{ row.id }}/edit">Düzenle</a>
+            <a class="btn sm" href="/customers/{{ row.customer_id }}">Müşteri</a>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="muted">Sözleşme bulunamadı.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

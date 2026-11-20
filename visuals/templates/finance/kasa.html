@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="toolbar">
+  <h1 style="margin:0;flex:1">Kasa / Tahsilat</h1>
+  <a class="btn ghost" href="/finance">Finans</a>
+</div>
+<div class="grid-2">
+  <section class="panel">
+    <h2>Yeni tahsilat</h2>
+    <form method="post">
+      <div class="field">
+        <label>Müşteri *</label>
+        <select name="customer_id" required>
+          {% for c in customers %}
+          <option value="{{ c.id }}">{{ c.otel_adi }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field"><label>Tutar *</label><input name="amount" type="number" step="0.01" required /></div>
+      <div class="field">
+        <label>Ödeme</label>
+        <select name="payment_method">
+          <option value="CASH">Nakit</option>
+          <option value="BANK_TRANSFER">Havale</option>
+          <option value="CREDIT_CARD">Kart</option>
+        </select>
+      </div>
+      <div class="field"><label>Açıklama</label><input name="description" /></div>
+      <button type="submit">Kaydet</button>
+    </form>
+  </section>
+  <section class="panel">
+    <h2>Son hareketler</h2>
+    <table class="table">
+      <thead><tr><th>Tip</th><th>Müşteri</th><th>Tutar</th><th>Yöntem</th></tr></thead>
+      <tbody>
+        {% for t in transactions %}
+        <tr>
+          <td>{{ t.type }}</td>
+          <td>#{{ t.customer_id or '—' }}</td>
+          <td>{{ t.amount }} {{ t.currency }}</td>
+          <td>{{ t.payment_method or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="muted">Hareket yok</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+{% endblock %}

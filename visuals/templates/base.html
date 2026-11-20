@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title or "CRM" }}</title>
+    <link rel="stylesheet" href="/static/css/app.css" />
+  </head>
+  <body>
+    {% set path = request.url.path %}
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="brand" href="/">
+          <span class="brand-title">CRM</span>
+        </a>
+        <nav class="nav">
+          <a class="nav-link {% if path.startswith('/customers') %}active{% endif %}" href="/customers">Müşteriler</a>
+          <a class="nav-link {% if path.startswith('/contracts') %}active{% endif %}" href="/contracts">Sözleşmeler</a>
+          <a class="nav-link {% if path.startswith('/catalog') %}active{% endif %}" href="/catalog"
+            >Ürün & Fiyat Kataloğu</a
+          >
+          <a class="nav-link {% if path.startswith('/btk') or path.startswith('/iss') %}active{% endif %}" href="/btk"
+            >BTK</a
+          >
+        </nav>
+        <div class="topbar-right">
+          <div class="live-clock" id="live-clock"><span>—</span></div>
+          <a class="logout" href="/login">Çıkış</a>
+        </div>
+      </div>
+    </header>
+    <main class="wrap">{% block content %}{% endblock %}</main>
+    <script src="/static/js/app.js"></script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>
