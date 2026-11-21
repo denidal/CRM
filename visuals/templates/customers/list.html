@@ -11,7 +11,7 @@
 </div>
 
 <form class="search-bar" method="get" action="/customers">
-  <input type="search" name="q" value="{{ q }}" placeholder="Müşteri adı, lokasyon veya ürün ile ara..." />
+  <input type="search" name="q" value="{{ q }}" placeholder="Müşteri adı veya kodu ile ara..." />
   <button class="btn ghost" type="submit">Ara</button>
 </form>
 
@@ -19,124 +19,50 @@
   <table class="table">
     <thead>
       <tr>
-        <th style="width: 35%">Müşteri / Lokasyon / Ürün Hiyerarşisi</th>
-        <th>Kod / Hat No</th>
+        <th>Müşteri</th>
+        <th>Müşteri Kodu</th>
         <th>İletişim</th>
-        <th>Durum / Fiyat</th>
+        <th>Durum</th>
         <th style="text-align: right">İşlemler</th>
       </tr>
     </thead>
     <tbody>
       {% for c in customers %}
-      <!-- 1. SEVİYE: MÜŞTERİ SATIRI -->
-      <tr style="background-color: #f8fafc; font-weight: 600">
+      <tr>
         <td>
-          <div style="display: flex; align-items: center; gap: 8px">
-            <span style="font-size: 1.2rem">🏢</span>
-            <div>
-              <div class="cust-name" style="font-size: 1rem; color: #0f172a">{{ c.otel_adi }}</div>
-              {% if c.firma_unvan %}
-              <div class="cust-code" style="font-weight: normal">{{ c.firma_unvan }}</div>
-              {% endif %}
-            </div>
-          </div>
+          <a href="/customers/{{ c.id }}"><strong>{{ c.otel_adi }}</strong></a>
+          {% if c.firma_unvan %}
+          <div class="muted">{{ c.firma_unvan }}</div>
+          {% endif %}
         </td>
         <td>
-          {% if c.musteri_no %}<span class="badge blue">{{ c.musteri_no }}</span> {% else %}<span class="muted"
-            >#{{ c.id }}</span
-          >{% endif %}
+          {% if c.musteri_no %}
+          <span class="badge blue">{{ c.musteri_no }}</span>
+          {% else %}
+          <span class="muted">#{{ c.id }}</span>
+          {% endif %}
         </td>
         <td>
-          <div style="font-weight: normal">{{ c.irtibat_yetkili_telefon or '—' }}</div>
-          <div class="muted" style="font-weight: normal">{{ c.irtibat_yetkili_email or '' }}</div>
+          <div>{{ c.irtibat_yetkili_telefon or '—' }}</div>
+          <div class="muted">{{ c.irtibat_yetkili_email or '' }}</div>
         </td>
         <td>
-          {% if c.is_ready %}<span class="badge ok">Hazır</span> {% elif c.durum %}<span class="badge warn"
-            >{{ c.durum }}</span
-          >
-          {% else %}<span class="muted">—</span>{% endif %}
+          {% if c.is_ready %}
+          <span class="badge ok">Hazır</span>
+          {% elif c.durum %}
+          <span class="badge warn">{{ c.durum }}</span>
+          {% else %}
+          <span class="muted">—</span>
+          {% endif %}
         </td>
         <td style="text-align: right">
           <div class="actions" style="justify-content: flex-end">
-            <a class="btn icon" href="/customers/{{ c.id }}" title="Müşteri Detayı">👁</a>
-            <a class="btn icon" href="/customers/{{ c.id }}" title="Müşteri Düzenle">✎</a>
-            <a class="btn icon green" href="/contracts/new?customer_id={{ c.id }}" title="Yeni Lokasyon / Hizmet Ekle"
-              >📶</a
-            >
+            <a class="btn ghost sm" href="/customers/{{ c.id }}">Kart</a>
+            <a class="btn ghost sm green" href="/servisler/new?customer_id={{ c.id }}">+ Servis</a>
           </div>
-        </td>
-      </tr>
-
-      <!-- 2. SEVİYE: LOKASYONLAR (Girintili) -->
-      {% for loc in c.locations %}
-      <tr style="background-color: #ffffff">
-        <td style="padding-left: 2rem">
-          <div style="display: flex; align-items: center; gap: 6px">
-            <span style="color: #0284c7">📍</span>
-            <strong>{{ loc.label }}</strong>
-            {% if loc.city or loc.district %}
-            <span class="muted">({{ loc.city or '' }} {{ loc.district or '' }})</span>
-            {% endif %}
-          </div>
-        </td>
-        <td><span class="badge ghost">Adres Kodu: {{ loc.adres_kodu or '—' }}</span></td>
-        <td class="muted">{{ loc.address_text or 'Açık adres girilmemiş' }}</td>
-        <td><span class="badge">{{ loc.services|length }} Ürün/Hizmet</span></td>
-        <td style="text-align: right">
-          <a class="btn ghost sm" href="/customers/{{ c.id }}#addresses" title="Lokasyonu Düzenle"
-            >📍 Lokasyon Düzenle</a
-          >
-        </td>
-      </tr>
-
-      <!-- 3. SEVİYE: ÜRÜNLER / HİZMETLER (En İçte Girintili) -->
-      {% for s in loc.services %}
-      <tr style="background-color: #f1f5f9">
-        <td style="padding-left: 4rem">
-          <div style="display: flex; align-items: center; gap: 6px">
-            <span style="color: #16a34a">📦</span>
-            <span style="font-weight: 500">{{ s.product_name or s.hizmet_turu or 'Finans Kataloğu Ürünü' }}</span>
-          </div>
-        </td>
-        <td>
-          {% if s.hat_no %}<span class="badge ok">{{ s.hat_no }}</span> {% else %}<span class="muted">—</span>{% endif
-          %}
-        </td>
-        <td class="muted">Sözleşme ID: #{{ s.id }}</td>
-        <td>
-          <strong>{{ s.price or 0 }} {{ s.currency or 'TRY' }}</strong>
-        </td>
-        <td style="text-align: right">
-          <!-- Doğrudan Bu Ürünün/Hizmetin Düzenleme Linki -->
-          <a
-            class="btn icon"
-            href="/contracts/{{ s.id }}/edit"
-            title="Ürünü / Hizmeti Düzenle"
-            style="background: #e2e8f0"
-            >✏️ Ürün Düzenle</a
-          >
         </td>
       </tr>
       {% else %}
-      <!-- Lokasyona Bağlı Ürün Yoksa -->
-      <tr style="background-color: #fafafa">
-        <td style="padding-left: 4rem" colspan="4" class="muted">
-          <em>Bu lokasyonda henüz tanımlı bir finans ürünü yok.</em>
-        </td>
-        <td style="text-align: right">
-          <a class="btn ghost sm green" href="/contracts/new?customer_id={{ c.id }}&address_id={{ loc.id }}"
-            >+ Ürün Ekle</a
-          >
-        </td>
-      </tr>
-      {% endfor %} {% else %}
-      <!-- Lokasyonu Olmayan Müşteriler İçin -->
-      <tr>
-        <td style="padding-left: 2rem" colspan="5" class="muted">
-          <em>Kayıtlı lokasyon bulunamadı.</em>
-        </td>
-      </tr>
-      {% endfor %} {% else %}
       <tr>
         <td colspan="5" class="muted">Müşteri bulunamadı.</td>
       </tr>

@@ -1,25 +1,28 @@
 <article class="service-card">
-  <div style="display:flex;justify-content:space-between;gap:.5rem;align-items:flex-start">
+  <div style="display: flex; justify-content: space-between; gap: 0.5rem; align-items: flex-start">
     <h3>{{ s.service_type|capitalize if s.service_type else 'Hizmet' }}</h3>
     <span class="badge {% if s.status == 'active' %}ok{% else %}muted{% endif %}">{{ s.status }}</span>
   </div>
   <div>
-    {{ s.internet_hiz or s.paket_adi or '—' }}
-    {% if s.fiyat is defined and s.fiyat %} · {{ s.fiyat }} {{ s.para_birimi or 'TL' }}
-    {% elif s.money is defined %} · {{ s.money }}{% endif %}
+    {{ s.internet_hiz or s.paket_adi or '—' }} {% if s.fiyat is defined and s.fiyat %} · {{ s.fiyat }} {{ s.para_birimi
+    or 'TL' }} {% elif s.money is defined %} · {{ s.money }}{% endif %}
   </div>
   {% if s.remaining_label is defined %}
-  <div style="margin-top:.45rem"><span class="badge {{ s.remaining_tone }}">{{ s.remaining_label }}</span></div>
+  <div style="margin-top: 0.45rem"><span class="badge {{ s.remaining_tone }}">{{ s.remaining_label }}</span></div>
   {% endif %}
-  <div class="service-meta muted" style="margin-top:.45rem;font-size:.82rem">
-    {% if s.pop_kodu %}<div>POP: {{ s.pop_kodu }}{% if s.pop_adi %} — {{ s.pop_adi }}{% endif %}</div>{% endif %}
-    {% if s.radius_username %}<div>RADIUS: {{ s.radius_username }}</div>{% endif %}
-    {% if s.hat_no %}<div>Hat: {{ s.hat_no }}</div>{% endif %}
-    {% if s.sozlesme_bitis_tarihi %}<div>Bitiş: {{ s.sozlesme_bitis_tarihi }}</div>{% endif %}
+  <div class="service-meta muted" style="margin-top: 0.45rem; font-size: 0.82rem">
+    {% if s.pop_kodu %}
+    <div>POP: {{ s.pop_kodu }}{% if s.pop_adi %} — {{ s.pop_adi }}{% endif %}</div>
+    {% endif %} {% if s.radius_username %}
+    <div>RADIUS: {{ s.radius_username }}</div>
+    {% endif %} {% if s.hat_no %}
+    <div>Hat: {{ s.hat_no }}</div>
+    {% endif %} {% if s.sozlesme_bitis_tarihi %}
+    <div>Bitiş: {{ s.sozlesme_bitis_tarihi }}</div>
+    {% endif %}
   </div>
-  <div class="toolbar" style="margin-top:.65rem;margin-bottom:0">
-    <a class="btn sm" href="/contracts/{{ s.id }}/edit">Düzenle</a>
+  <div class="toolbar" style="margin-top: 0.65rem; margin-bottom: 0">
     <a class="btn ghost sm" href="/services/{{ s.id }}/radius">RADIUS</a>
-    <a class="btn ghost sm" href="/contracts/{{ s.id }}/auto">Sözleşme</a>
+    <a class="btn ghost sm" href="/servisler">Servisler</a>
   </div>
 </article>

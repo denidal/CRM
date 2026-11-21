@@ -1,5 +1,4 @@
-{% extends "base.html" %}
-{% block content %}
+{% extends "base.html" %} {% block content %}
 <div class="page-head">
   <div>
     <h1>Yeni Müşteri</h1>
@@ -8,7 +7,9 @@
   <a class="btn ghost" href="/customers">Liste</a>
 </div>
 
-{% if error %}<div class="error">{{ error }}</div>{% endif %}
+{% if error %}
+<div class="error">{{ error }}</div>
+{% endif %}
 
 <form method="post" action="/customers/new" class="panel">
   <h2>Temel Bilgiler</h2>

@@ -15,7 +15,11 @@
         </a>
         <nav class="nav">
           <a class="nav-link {% if path.startswith('/customers') %}active{% endif %}" href="/customers">Müşteriler</a>
-          <a class="nav-link {% if path.startswith('/contracts') %}active{% endif %}" href="/contracts">Sözleşmeler</a>
+          <a
+            class="nav-link {% if path.startswith('/servisler') or path.startswith('/contracts') %}active{% endif %}"
+            href="/servisler"
+            >Servisler</a
+          >
           <a class="nav-link {% if path.startswith('/catalog') %}active{% endif %}" href="/catalog"
             >Ürün & Fiyat Kataloğu</a
           >

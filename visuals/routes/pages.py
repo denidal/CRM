@@ -263,7 +263,200 @@ def customers_list(
         },
     )
 
+@router.get("/servisler", response_class=HTMLResponse)
+def servisler_list(
+    request: Request,
+    type: str | None = None,
+    urgent: int = 0,
+    db: Session = Depends(get_db),
+):
+    names = _customer_name_map(db)
+    codes = _customer_code_map(db)
+    rows = _enrich_rows(_all_sales(db), names, codes)
+    if type:
+        rows = [r for r in rows if r["service_type"] == type]
+    if urgent:
+        rows = [r for r in rows if r["days_left"] is not None and r["days_left"] < 60]
+    return templates.TemplateResponse(
+        request,
+        "services/list.html",
+        {
+            "rows": rows,
+            "type": type or "",
+            "urgent": urgent,
+            "title": "Servisler",
+        },
+    )
 
+@router.get("/servisler/new", response_class=HTMLResponse)
+def servis_new_form(
+    request: Request,
+    customer_id: int | None = None,
+    address_id: int | None = None,
+    db: Session = Depends(get_db),
+):
+    from system.services.finance_service import FinanceService
+
+    try:
+        svc = FinanceService(db)
+        products = svc.list_products()
+        saved_prices = svc.get_catalog_prices()
+    except Exception:
+        products = []
+        saved_prices = {}
+
+    return templates.TemplateResponse(
+        request,
+        "services/form.html",
+        {
+            "customers": CustomerService(db).list_customers(),
+            "products": products,
+            "prices": saved_prices,
+            "selected_customer_id": customer_id,
+            "selected_address_id": address_id,
+            "today": date.today().isoformat(),
+            "error": None,
+            "title": "Yeni Servis",
+        },
+    )
+
+
+@router.post("/servisler/new")
+def servis_create(
+    request: Request,
+    customer_id: int = Form(...),
+    address_id: str = Form(""),
+    service_type: str = Form("hotspot"),
+    product_name: str = Form(...),
+    unit_price: str = Form(...),
+    quantity: str = Form("1"),
+    start_date: str = Form(""),
+    end_date: str = Form(""),
+    durum: str = Form("onaylandı"),
+    db: Session = Depends(get_db),
+):
+    try:
+        clean_price = (
+            float(unit_price.replace(".", "").replace(",", "."))
+            if isinstance(unit_price, str)
+            else float(unit_price)
+        )
+        clean_qty = float(quantity or 1)
+
+        payload = {
+            "service_type": service_type,
+            "paket_adi": product_name or None,
+            "internet_hiz": product_name or None,
+            "fiyat": clean_price * clean_qty,
+            "para_birimi": "TL",
+            "sozlesme_baslangic_tarihi": start_date or None,
+            "sozlesme_bitis_tarihi": end_date or None,
+            "contract_durum": durum or "onaylandı",
+        }
+        if address_id.isdigit():
+            payload["address_id"] = int(address_id)
+
+        ServiceSaleService(db).add_service(customer_id, payload)
+        return RedirectResponse("/servisler", status_code=303)
+    except ValueError as exc:
+        from system.services.finance_service import FinanceService
+
+        try:
+            svc = FinanceService(db)
+            products = svc.list_products()
+            saved_prices = svc.get_catalog_prices()
+        except Exception:
+            products = []
+            saved_prices = {}
+
+        return templates.TemplateResponse(
+            request,
+            "servisler/form.html",
+            {
+                "customers": CustomerService(db).list_customers(),
+                "products": products,
+                "prices": saved_prices,
+                "selected_customer_id": customer_id,
+                "selected_address_id": int(address_id) if address_id.isdigit() else None,
+                "today": date.today().isoformat(),
+                "error": str(exc),
+                "title": "Yeni Servis",
+            },
+            status_code=400,
+        )
+
+@router.get("/servisler/new", response_class=HTMLResponse)
+def servis_new_form(request: Request, customer_id: int | None = None, db: Session = Depends(get_db)):
+    return templates.TemplateResponse(
+        request,
+        "contracts/form.html",
+        {
+            "sale": None,
+            "customers": CustomerService(db).list_customers(),
+            "paketler": hotspot_paketleri(),
+            "hizler": internet_hizleri(),
+            "sureler": sozlesme_sureleri(),
+            "selected_customer_id": customer_id,
+            "today": date.today().isoformat(),
+            "error": None,
+            "title": "Yeni Servis",
+        },
+    )
+
+
+@router.post("/servisler/new")
+def servis_create(
+    request: Request,
+    customer_id: int = Form(...),
+    service_type: str = Form("hotspot"),
+    paket_adi: str = Form(""),
+    internet_hiz: str = Form(""),
+    fiyat: str = Form("0"),
+    para_birimi: str = Form("TL"),
+    sozlesme_suresi: str = Form("3 Yıl"),
+    sozlesme_baslangic_tarihi: str = Form(""),
+    sozlesme_bitis_tarihi: str = Form(""),
+    sozlesme_no: str = Form(""),
+    orijinal_sozlesme_no: str = Form(""),
+    contract_durum: str = Form("onaylandı"),
+    db: Session = Depends(get_db),
+):
+    try:
+        ServiceSaleService(db).add_service(
+            customer_id,
+            {
+                "service_type": service_type,
+                "paket_adi": paket_adi or None,
+                "internet_hiz": internet_hiz or paket_adi or None,
+                "fiyat": fiyat,
+                "para_birimi": para_birimi,
+                "sozlesme_suresi": sozlesme_suresi,
+                "sozlesme_baslangic_tarihi": sozlesme_baslangic_tarihi or None,
+                "sozlesme_bitis_tarihi": sozlesme_bitis_tarihi or None,
+                "sozlesme_no": sozlesme_no or None,
+                "orijinal_sozlesme_no": orijinal_sozlesme_no or None,
+                "contract_durum": contract_durum,
+            },
+        )
+        return RedirectResponse("/servisler", status_code=303)
+    except ValueError as exc:
+        return templates.TemplateResponse(
+            request,
+            "contracts/form.html",
+            {
+                "sale": None,
+                "customers": CustomerService(db).list_customers(),
+                "paketler": hotspot_paketleri(),
+                "hizler": internet_hizleri(),
+                "sureler": sozlesme_sureleri(),
+                "selected_customer_id": customer_id,
+                "today": date.today().isoformat(),
+                "error": str(exc),
+                "title": "Yeni Servis",
+            },
+            status_code=400,
+        )
+    
 @router.post("/customers/{customer_id}/archive")
 def customer_archive(customer_id: int, db: Session = Depends(get_db)):
     CustomerService(db).repo.archive(customer_id)
@@ -380,196 +573,7 @@ def customer_delete_address(customer_id: int, address_id: int, db: Session = Dep
 
 @router.get("/customers/{customer_id}/services/new", response_class=HTMLResponse)
 def service_form_legacy(customer_id: int):
-    return RedirectResponse(f"/contracts/new?customer_id={customer_id}", status_code=303)
-
-
-@router.get("/contracts", response_class=HTMLResponse)
-def contracts_list(
-    request: Request,
-    type: str | None = None,
-    urgent: int = 0,
-    db: Session = Depends(get_db),
-):
-    names = _customer_name_map(db)
-    rows = _enrich_rows(_all_sales(db), names)
-    if type:
-        rows = [r for r in rows if r["service_type"] == type]
-    if urgent:
-        rows = [r for r in rows if r["days_left"] is not None and r["days_left"] < 60]
-    return templates.TemplateResponse(
-        request,
-        "contracts/list.html",
-        {"rows": rows, "type": type or "", "urgent": urgent, "title": "Sözleşmeler"},
-    )
-
-
-@router.get("/contracts/new", response_class=HTMLResponse)
-def contract_new(request: Request, customer_id: int | None = None, db: Session = Depends(get_db)):
-    return templates.TemplateResponse(
-        request,
-        "contracts/form.html",
-        {
-            "sale": None,
-            "customers": CustomerService(db).list_customers(),
-            "paketler": hotspot_paketleri(),
-            "hizler": internet_hizleri(),
-            "sureler": sozlesme_sureleri(),
-            "selected_customer_id": customer_id,
-            "today": date.today().isoformat(),
-            "error": None,
-            "title": "Yeni Sözleşme",
-        },
-    )
-
-
-@router.post("/contracts/new")
-def contract_create(
-    request: Request,
-    customer_id: int = Form(...),
-    service_type: str = Form("hotspot"),
-    paket_adi: str = Form(""),
-    internet_hiz: str = Form(""),
-    fiyat: str = Form("0"),
-    para_birimi: str = Form("TL"),
-    sozlesme_suresi: str = Form("3 Yıl"),
-    sozlesme_baslangic_tarihi: str = Form(""),
-    sozlesme_bitis_tarihi: str = Form(""),
-    sozlesme_no: str = Form(""),
-    orijinal_sozlesme_no: str = Form(""),
-    contract_durum: str = Form("onaylandı"),
-    db: Session = Depends(get_db),
-):
-    try:
-        sale = ServiceSaleService(db).add_service(
-            customer_id,
-            {
-                "service_type": service_type,
-                "paket_adi": paket_adi or None,
-                "internet_hiz": internet_hiz or paket_adi or None,
-                "fiyat": fiyat,
-                "para_birimi": para_birimi,
-                "sozlesme_suresi": sozlesme_suresi,
-                "sozlesme_baslangic_tarihi": sozlesme_baslangic_tarihi or None,
-                "sozlesme_bitis_tarihi": sozlesme_bitis_tarihi or None,
-                "sozlesme_no": sozlesme_no or None,
-                "orijinal_sozlesme_no": orijinal_sozlesme_no or None,
-                "contract_durum": contract_durum,
-            },
-        )
-        return RedirectResponse(f"/contracts/{sale.id}/edit", status_code=303)
-    except ValueError as exc:
-        return templates.TemplateResponse(
-            request,
-            "contracts/form.html",
-            {
-                "sale": None,
-                "customers": CustomerService(db).list_customers(),
-                "paketler": hotspot_paketleri(),
-                "hizler": internet_hizleri(),
-                "sureler": sozlesme_sureleri(),
-                "selected_customer_id": customer_id,
-                "today": date.today().isoformat(),
-                "error": str(exc),
-                "title": "Yeni Sözleşme",
-            },
-            status_code=400,
-        )
-
-
-@router.get("/contracts/{service_id}/edit", response_class=HTMLResponse)
-def contract_edit(request: Request, service_id: int, db: Session = Depends(get_db)):
-    sale = ServiceSaleService(db).get(service_id)
-    if not sale:
-        return HTMLResponse("Sözleşme bulunamadı", status_code=404)
-    return templates.TemplateResponse(
-        request,
-        "contracts/form.html",
-        {
-            "sale": sale_dict(sale),
-            "customers": CustomerService(db).list_customers(),
-            "paketler": hotspot_paketleri(),
-            "hizler": internet_hizleri(),
-            "sureler": sozlesme_sureleri(),
-            "selected_customer_id": sale.customer_id,
-            "today": date.today().isoformat(),
-            "error": None,
-            "title": f"Sözleşme #{service_id}",
-        },
-    )
-
-
-@router.post("/contracts/{service_id}/edit")
-def contract_update(
-    request: Request,
-    service_id: int,
-    customer_id: int = Form(...),
-    service_type: str = Form("hotspot"),
-    paket_adi: str = Form(""),
-    internet_hiz: str = Form(""),
-    fiyat: str = Form("0"),
-    para_birimi: str = Form("TL"),
-    sozlesme_suresi: str = Form("3 Yıl"),
-    sozlesme_baslangic_tarihi: str = Form(""),
-    sozlesme_bitis_tarihi: str = Form(""),
-    sozlesme_no: str = Form(""),
-    orijinal_sozlesme_no: str = Form(""),
-    contract_durum: str = Form("onaylandı"),
-    db: Session = Depends(get_db),
-):
-    try:
-        ServiceSaleService(db).update_service(
-            service_id,
-            {
-                "service_type": service_type,
-                "paket_adi": paket_adi or None,
-                "internet_hiz": internet_hiz or None,
-                "fiyat": fiyat,
-                "para_birimi": para_birimi,
-                "sozlesme_suresi": sozlesme_suresi,
-                "sozlesme_baslangic_tarihi": sozlesme_baslangic_tarihi or None,
-                "sozlesme_bitis_tarihi": sozlesme_bitis_tarihi or None,
-                "sozlesme_no": sozlesme_no or None,
-                "orijinal_sozlesme_no": orijinal_sozlesme_no or None,
-                "contract_durum": contract_durum,
-            },
-        )
-        return RedirectResponse(f"/contracts/{service_id}/edit", status_code=303)
-    except ValueError as exc:
-        sale = ServiceSaleService(db).get(service_id)
-        return templates.TemplateResponse(
-            request,
-            "contracts/form.html",
-            {
-                "sale": sale_dict(sale) if sale else None,
-                "customers": CustomerService(db).list_customers(),
-                "paketler": hotspot_paketleri(),
-                "hizler": internet_hizleri(),
-                "sureler": sozlesme_sureleri(),
-                "selected_customer_id": customer_id,
-                "today": date.today().isoformat(),
-                "error": str(exc),
-                "title": f"Sözleşme #{service_id}",
-            },
-            status_code=400,
-        )
-
-
-@router.get("/contracts/{service_id}/auto", response_class=HTMLResponse)
-def contract_auto(request: Request, service_id: int, db: Session = Depends(get_db)):
-    sale = ServiceSaleService(db).get(service_id)
-    if not sale:
-        return HTMLResponse("Sözleşme bulunamadı", status_code=404)
-    customer = CustomerService(db).get(sale.customer_id)
-    return templates.TemplateResponse(
-        request,
-        "contracts/auto.html",
-        {
-            "sale": sale_dict(sale),
-            "customer": customer,
-            "title": "Otomatik Sözleşme",
-        },
-    )
-
+    return RedirectResponse(f"/servisler/new?customer_id={customer_id}", status_code=303)
 
 @router.get("/archive", response_class=HTMLResponse)
 def archive_page(request: Request, db: Session = Depends(get_db)):
@@ -732,16 +736,29 @@ def service_radius_save(
 def finance_home(request: Request, db: Session = Depends(get_db)):
     from system.services.finance_service import FinanceService
 
+    names = _customer_name_map(db)
+    codes = _customer_code_map(db)
+    sales_rows = _enrich_rows(_all_sales(db), names, codes)
+
     try:
         svc = FinanceService(db)
         balances, invoices, products = svc.balances(), svc.list_invoices()[:50], svc.list_products()
     except Exception:
         balances, invoices, products = [], [], []
+
     return templates.TemplateResponse(
         request,
         "finance/index.html",
-        {"balances": balances, "invoices": invoices, "products": products, "title": "Finans"},
+        {
+            "balances": balances,
+            "invoices": invoices,
+            "products": products,
+            "sales": sales_rows,
+            "title": "Finans",
+        },
     )
+
+
 from sqlalchemy import text
 @router.post("/finance/invoices/{invoice_id}/pay")
 def mark_invoice_as_paid(invoice_id: int, db: Session = Depends(get_db)):
@@ -807,12 +824,23 @@ def cancel_invoice(invoice_id: int, db: Session = Depends(get_db)):
 def finance_invoices(request: Request, db: Session = Depends(get_db)):
     from system.services.finance_service import FinanceService
 
+    names = _customer_name_map(db)
+    codes = _customer_code_map(db)
+    sales_rows = _enrich_rows(_all_sales(db), names, codes)
+
     try:
         invoices = FinanceService(db).list_invoices()
     except Exception:
         invoices = []
+
     return templates.TemplateResponse(
-        request, "finance/invoices.html", {"invoices": invoices, "title": "Faturalar"}
+        request,
+        "finance/invoices.html",
+        {
+            "invoices": invoices,
+            "sales": sales_rows,
+            "title": "Faturalar",
+        },
     )
 
 
@@ -844,7 +872,6 @@ def finance_invoice_new(request: Request, db: Session = Depends(get_db)):
 def finance_invoice_create(
     request: Request,
     customer_id: int = Form(...),
-    # REMOVE THIS LINE: location_id: int = Form(...),  
     issue_date: str = Form(...),
     due_date: str = Form(...),
     product_name: str = Form(...),
@@ -852,17 +879,25 @@ def finance_invoice_create(
     quantity: str = Form("1"),
     vat_rate: str = Form("20"),
     description: str = Form(""),
+    service_type: str = Form("hotspot"),
+    sozlesme_suresi: str = Form("1 Yıl"),
+    sozlesme_no: str = Form(""),
+    contract_durum: str = Form("onaylandı"),
     db: Session = Depends(get_db),
 ):
     from system.services.finance_service import FinanceService
 
     try:
-        clean_price = float(unit_price.replace(".", "").replace(",", ".")) if isinstance(unit_price, str) else float(unit_price)
+        clean_price = (
+            float(unit_price.replace(".", "").replace(",", "."))
+            if isinstance(unit_price, str)
+            else float(unit_price)
+        )
+        clean_qty = float(quantity or 1)
 
         FinanceService(db).create_invoice(
             {
                 "customer_id": customer_id,
-                # REMOVE THIS LINE TOO: "location_id": location_id,  
                 "issue_date": issue_date,
                 "due_date": due_date,
                 "description": description or None,
@@ -870,36 +905,56 @@ def finance_invoice_create(
                     {
                         "product_name": product_name,
                         "unit_price": clean_price,
-                        "quantity": float(quantity or 1),
+                        "quantity": clean_qty,
                         "vat_rate": int(vat_rate or 20),
                     }
                 ],
             }
         )
+
+        # Create matching ServiceSale so it appears on /contracts
+        ServiceSaleService(db).add_service(
+            customer_id,
+            {
+                "service_type": service_type,
+                "paket_adi": product_name or None,
+                "internet_hiz": product_name or None,
+                "fiyat": clean_price * clean_qty,
+                "para_birimi": "TL",
+                "sozlesme_no": sozlesme_no or None,
+                "sozlesme_suresi": sozlesme_suresi or "1 Yıl",
+                "sozlesme_baslangic_tarihi": issue_date or None,
+                "sozlesme_bitis_tarihi": due_date or None,
+                "contract_durum": contract_durum or "onaylandı",
+            },
+        )
+
         return RedirectResponse("/finance/invoices", status_code=303)
     except ValueError as exc:
+        from system.services.finance_service import FinanceService
+
+        try:
+            svc = FinanceService(db)
+            products = svc.list_products()
+            saved_prices = svc.get_catalog_prices()
+        except Exception:
+            products = []
+            saved_prices = {}
+
         return templates.TemplateResponse(
             request,
             "finance/invoice_form.html",
             {
                 "customers": CustomerService(db).list_customers(),
-                "products": [],
+                "products": products,
+                "prices": saved_prices,
                 "error": str(exc),
                 "title": "Yeni Fatura",
             },
             status_code=400,
         )
-    
-def save_catalog_prices(self, form_data: dict):
-    for key, value in form_data.items():
-        if value:  # Only save if a value was entered
-            # Example database upsert logic:
-            self.db.execute(
-                text("INSERT INTO catalog_prices (price_key, price_value) VALUES (:k, :v) ON DUPLICATE KEY UPDATE price_value = :v"),
-                {"k": key, "v": float(value)}
-            )
-    self.db.commit()
 
+    
 @router.get("/finance/products", response_class=HTMLResponse)
 def finance_catalog(request: Request, db: Session = Depends(get_db)):
     from system.services.finance_service import FinanceService

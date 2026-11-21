@@ -1,11 +1,25 @@
-{% extends "base.html" %}
-{% block content %}
-<h1>Hizmetler — {{ customer.otel_adi }}</h1>
+{% extends "base.html" %} {% block content %} {% set list_items = rows if rows is defined else services %}
+<div class="page-head">
+  <div>
+    <h1>{% if customer %}Servisler — {{ customer.otel_adi }}{% else %}Servisler{% endif %}</h1>
+    <div class="page-meta">
+      {% if customer %}Müşteri #{{ customer.id }}{% else %}Toplam {{ list_items|length }} servis{% endif %}
+    </div>
+  </div>
+  <div class="toolbar" style="margin: 0">
+    {% if customer %}
+    <a class="btn green" href="/servisler/new?customer_id={{ customer.id }}">+ Yeni Servis</a>
+    <a class="btn ghost" href="/customers/{{ customer.id }}">Müşteri Kartı</a>
+    {% else %}
+    <a class="btn green" href="/servisler/new">+ Yeni Servis</a>
+    {% endif %}
+    <a class="btn ghost" href="/servisler">Tüm Servisler</a>
+  </div>
+</div>
+
 <div class="service-list">
-  {% for s in services %}
-  {% include "services/card.html" %}
-  {% else %}
-  <p class="muted">Hizmet yok.</p>
+  {% for s in list_items %} {% include "services/card.html" %} {% else %}
+  <p class="muted">Kayıtlı servis yok.</p>
   {% endfor %}
 </div>
 {% endblock %}
