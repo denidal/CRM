@@ -287,169 +287,144 @@ def servisler_list(
             "title": "Servisler",
         },
     )
+from datetime import date
 
 @router.get("/servisler/new", response_class=HTMLResponse)
 def servis_new_form(
     request: Request,
     customer_id: int | None = None,
-    address_id: int | None = None,
+    location_id: int | None = None,
     db: Session = Depends(get_db),
 ):
+    from data.models.service_sale import COMMITMENT_OPTIONS, SERVICE_STATUSES
     from system.services.finance_service import FinanceService
 
+    svc_sales = ServiceSaleService(db)
     try:
-        svc = FinanceService(db)
-        products = svc.list_products()
-        saved_prices = svc.get_catalog_prices()
-    except Exception:
+        fin = FinanceService(db)
+        products = fin.list_products() or []
+        raw_prices = fin.get_catalog_prices() or {}
+        saved_prices = {
+            str(k): (float(v) if v is not None else None)
+            for k, v in raw_prices.items()
+        }
+    except Exception as exc:
+        db.rollback()
+        print("CATALOG ERR:", repr(exc))
         products = []
         saved_prices = {}
+
+    locations = svc_sales.list_locations_for_customer(customer_id) if customer_id else []
+    pops = PopRepository(db).list(only_active=True)
+    customers = CustomerService(db).list_customers()
 
     return templates.TemplateResponse(
         request,
         "services/form.html",
         {
-            "customers": CustomerService(db).list_customers(),
+            "customers": customers,
+            "locations": locations,
+            "pops": pops,
             "products": products,
             "prices": saved_prices,
+            "statuses": SERVICE_STATUSES,
+            "commitments": COMMITMENT_OPTIONS,
             "selected_customer_id": customer_id,
-            "selected_address_id": address_id,
+            "selected_location_id": location_id,
             "today": date.today().isoformat(),
             "error": None,
             "title": "Yeni Servis",
         },
     )
+from fastapi.responses import Response
 
+@router.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return Response(status_code=204)
 
 @router.post("/servisler/new")
 def servis_create(
     request: Request,
     customer_id: int = Form(...),
-    address_id: str = Form(""),
-    service_type: str = Form("hotspot"),
-    product_name: str = Form(...),
+    product_id: str = Form(""),
+    location_id: str = Form(""),
+    lokasyon_adi: str = Form(""),
+    lokasyon_il: str = Form(""),
+    lokasyon_ilce: str = Form(""),
+    lokasyon_adres: str = Form(""),
+    service_type: str = Form("internet"),
+    taahhut_suresi: str = Form("taahhutsuz"),
+    internet_hiz: str = Form(""),
+    product_name: str = Form(""),
     unit_price: str = Form(...),
     quantity: str = Form("1"),
     start_date: str = Form(""),
     end_date: str = Form(""),
-    durum: str = Form("onaylandı"),
+    durum: str = Form("teklif"),
+    pop_id: str = Form(""),
+    radius_username: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    from data.models.service_sale import COMMITMENT_OPTIONS, SERVICE_STATUSES
+    from system.services.finance_service import FinanceService
+
     try:
         clean_price = (
             float(unit_price.replace(".", "").replace(",", "."))
-            if isinstance(unit_price, str)
-            else float(unit_price)
+            if isinstance(unit_price, str) and "," in unit_price
+            else float(str(unit_price).replace(",", "."))
         )
         clean_qty = float(quantity or 1)
+        resolved_name = (product_name or internet_hiz or "").strip()
 
         payload = {
+            "product_id": int(product_id) if product_id.isdigit() else None,
+            "location_id": int(location_id) if location_id.isdigit() else None,
+            "lokasyon_adi": lokasyon_adi,
+            "lokasyon_il": lokasyon_il,
+            "lokasyon_ilce": lokasyon_ilce,
+            "lokasyon_adres": lokasyon_adres,
             "service_type": service_type,
-            "paket_adi": product_name or None,
-            "internet_hiz": product_name or None,
+            "taahhut_suresi": taahhut_suresi,
+            "paket_adi": resolved_name or None,
+            "internet_hiz": (internet_hiz or resolved_name) or None,
             "fiyat": clean_price * clean_qty,
             "para_birimi": "TL",
             "sozlesme_baslangic_tarihi": start_date or None,
             "sozlesme_bitis_tarihi": end_date or None,
-            "contract_durum": durum or "onaylandı",
+            "status": durum or "teklif",
+            "contract_durum": durum or "teklif",
+            "pop_id": int(pop_id) if pop_id.isdigit() else None,
+            "radius_username": radius_username.strip() or None,
         }
-        if address_id.isdigit():
-            payload["address_id"] = int(address_id)
 
         ServiceSaleService(db).add_service(customer_id, payload)
         return RedirectResponse("/servisler", status_code=303)
     except ValueError as exc:
-        from system.services.finance_service import FinanceService
-
+        db.rollback()
+        svc_sales = ServiceSaleService(db)
         try:
-            svc = FinanceService(db)
-            products = svc.list_products()
-            saved_prices = svc.get_catalog_prices()
+            fin = FinanceService(db)
+            products = fin.list_products()
+            saved_prices = fin.get_catalog_prices() or {}
         except Exception:
+            db.rollback()
             products = []
             saved_prices = {}
 
         return templates.TemplateResponse(
             request,
-            "servisler/form.html",
+            "services/form.html",
             {
                 "customers": CustomerService(db).list_customers(),
+                "locations": svc_sales.list_locations_for_customer(customer_id),
+                "pops": PopRepository(db).list(only_active=True),
                 "products": products,
                 "prices": saved_prices,
+                "statuses": SERVICE_STATUSES,
+                "commitments": COMMITMENT_OPTIONS,
                 "selected_customer_id": customer_id,
-                "selected_address_id": int(address_id) if address_id.isdigit() else None,
-                "today": date.today().isoformat(),
-                "error": str(exc),
-                "title": "Yeni Servis",
-            },
-            status_code=400,
-        )
-
-@router.get("/servisler/new", response_class=HTMLResponse)
-def servis_new_form(request: Request, customer_id: int | None = None, db: Session = Depends(get_db)):
-    return templates.TemplateResponse(
-        request,
-        "contracts/form.html",
-        {
-            "sale": None,
-            "customers": CustomerService(db).list_customers(),
-            "paketler": hotspot_paketleri(),
-            "hizler": internet_hizleri(),
-            "sureler": sozlesme_sureleri(),
-            "selected_customer_id": customer_id,
-            "today": date.today().isoformat(),
-            "error": None,
-            "title": "Yeni Servis",
-        },
-    )
-
-
-@router.post("/servisler/new")
-def servis_create(
-    request: Request,
-    customer_id: int = Form(...),
-    service_type: str = Form("hotspot"),
-    paket_adi: str = Form(""),
-    internet_hiz: str = Form(""),
-    fiyat: str = Form("0"),
-    para_birimi: str = Form("TL"),
-    sozlesme_suresi: str = Form("3 Yıl"),
-    sozlesme_baslangic_tarihi: str = Form(""),
-    sozlesme_bitis_tarihi: str = Form(""),
-    sozlesme_no: str = Form(""),
-    orijinal_sozlesme_no: str = Form(""),
-    contract_durum: str = Form("onaylandı"),
-    db: Session = Depends(get_db),
-):
-    try:
-        ServiceSaleService(db).add_service(
-            customer_id,
-            {
-                "service_type": service_type,
-                "paket_adi": paket_adi or None,
-                "internet_hiz": internet_hiz or paket_adi or None,
-                "fiyat": fiyat,
-                "para_birimi": para_birimi,
-                "sozlesme_suresi": sozlesme_suresi,
-                "sozlesme_baslangic_tarihi": sozlesme_baslangic_tarihi or None,
-                "sozlesme_bitis_tarihi": sozlesme_bitis_tarihi or None,
-                "sozlesme_no": sozlesme_no or None,
-                "orijinal_sozlesme_no": orijinal_sozlesme_no or None,
-                "contract_durum": contract_durum,
-            },
-        )
-        return RedirectResponse("/servisler", status_code=303)
-    except ValueError as exc:
-        return templates.TemplateResponse(
-            request,
-            "contracts/form.html",
-            {
-                "sale": None,
-                "customers": CustomerService(db).list_customers(),
-                "paketler": hotspot_paketleri(),
-                "hizler": internet_hizleri(),
-                "sureler": sozlesme_sureleri(),
-                "selected_customer_id": customer_id,
+                "selected_location_id": int(location_id) if location_id.isdigit() else None,
                 "today": date.today().isoformat(),
                 "error": str(exc),
                 "title": "Yeni Servis",
@@ -457,6 +432,7 @@ def servis_create(
             status_code=400,
         )
     
+
 @router.post("/customers/{customer_id}/archive")
 def customer_archive(customer_id: int, db: Session = Depends(get_db)):
     CustomerService(db).repo.archive(customer_id)

@@ -1,282 +1,795 @@
 {% extends "base.html" %} {% block content %}
-<form action="/finance/catalog/save" method="POST">
-  <div class="toolbar flex justify-between align-center mb-4">
-    <div>
-      <h1 class="hero-title" style="margin: 0">Ürün ve Fiyat Kataloğu</h1>
-      <p class="hero-sub">Hizmet Bazlı Metro Ethernet, WiFi, P2P, Kabin ve IP Blok Tarifeleri</p>
-    </div>
-    <div>
-      <a class="btn ghost" href="/finance">Finans Paneli</a>
-      <button type="submit" class="btn primary">Tüm Fiyatları Kaydet</button>
-    </div>
-  </div>
+<style>
+  .catalog-page {
+    --card-bg: #ffffff;
+    --surface-2: #f8fafc;
+    --border-soft: #e2e8f0;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --accent: #2563eb;
+    --accent-soft: #eff6ff;
+    --success-bg: #ecfdf5;
+    --success-text: #047857;
+  }
 
-  <!-- TABLO-1: Sekmeli Hizmet Tarifeleri -->
-  <section class="panel mb-4" style="margin-bottom: 24px">
-    <div class="panel-head flex justify-between align-center">
-      <h2>Tablo-1: Hız & Taahhüt Tarifeleri</h2>
-      <div class="tab-buttons" style="display: flex; gap: 8px">
-        <button type="button" class="btn sm primary" id="btn-metro" onclick="switchTab('metro')">Metro Ethernet</button>
-        <button type="button" class="btn sm ghost" id="btn-wifi" onclick="switchTab('wifi')">WiFi İnternet</button>
-        <button type="button" class="btn sm ghost" id="btn-p2p" onclick="switchTab('p2p')">P2P Kapasite</button>
+  .catalog-page .cat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  }
+
+  .catalog-page .cat-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-main);
+    letter-spacing: -0.02em;
+  }
+
+  .catalog-page .cat-sub {
+    margin: 0.25rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  .catalog-page .cat-actions {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .catalog-page .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+    gap: 0.85rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .catalog-page .kpi-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    padding: 0.9rem 1.1rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+
+  .catalog-page .kpi-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+  }
+
+  .catalog-page .kpi-val {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin-top: 0.2rem;
+  }
+
+  .catalog-page .cat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    margin-bottom: 1.35rem;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  }
+
+  .catalog-page .cat-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding: 0.95rem 1.25rem;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border-soft);
+  }
+
+  .catalog-page .cat-card-head h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+
+  .catalog-page .pill-tabs {
+    display: inline-flex;
+    gap: 0.35rem;
+    background: #e2e8f0;
+    padding: 0.25rem;
+    border-radius: 10px;
+  }
+
+  .catalog-page .pill-tab {
+    border: none;
+    background: transparent;
+    color: #334155;
+    font-weight: 600;
+    font-size: 0.82rem;
+    padding: 0.42rem 0.85rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .catalog-page .pill-tab.active {
+    background: var(--card-bg);
+    color: var(--accent);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.1);
+  }
+
+  .catalog-page .cat-table-wrap {
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+  }
+
+  .catalog-page table.cat-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+
+  .catalog-page table.cat-table th {
+    text-align: left;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid var(--border-soft);
+    background: var(--surface-2);
+  }
+
+  .catalog-page table.cat-table td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: var(--text-main);
+    vertical-align: middle;
+  }
+
+  .catalog-page table.cat-table tbody tr:hover {
+    background: #f8fafc;
+  }
+
+  .catalog-page .price-input {
+    width: 100%;
+    min-width: 120px;
+    padding: 0.48rem 0.65rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    color: var(--text-main) !important;
+    background: #ffffff !important;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+
+  .catalog-page .price-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+  }
+
+  .catalog-page .two-col-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.35rem;
+  }
+
+  .catalog-page .add-row-bar {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 0.85rem 1.25rem;
+    background: #fafcff;
+    border-top: 1px solid var(--border-soft);
+  }
+
+  .catalog-page .add-row-bar input,
+  .catalog-page .add-row-bar select {
+    padding: 0.45rem 0.65rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: var(--text-main) !important;
+    background: #ffffff !important;
+  }
+
+  .catalog-page .badge-custom {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    margin-left: 0.4rem;
+  }
+
+  .catalog-page .proration-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .catalog-page .proration-grid label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 0.3rem;
+  }
+
+  .catalog-page .proration-box {
+    background: var(--success-bg);
+    border: 1px solid #a7f3d0;
+    border-radius: 10px;
+    padding: 0.9rem 1.1rem;
+    color: var(--text-main);
+  }
+
+  .catalog-page .proration-box h4 {
+    margin: 0 0 0.25rem;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--success-text);
+  }
+
+  .catalog-page .btn-mini {
+    border: none;
+    border-radius: 8px;
+    padding: 0.45rem 0.8rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .catalog-page .btn-mini:hover {
+    filter: brightness(0.95);
+  }
+
+  .catalog-page .btn-del {
+    border: 1px solid #fecaca;
+    background: #fef2f2;
+    color: #b91c1c;
+    border-radius: 6px;
+    padding: 0.25rem 0.55rem;
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+</style>
+
+<div class="catalog-page">
+  <form action="/finance/catalog/save" method="POST" id="catalogForm">
+    <div class="cat-header">
+      <div>
+        <h1 class="cat-title">Ürün ve Fiyat Kataloğu</h1>
+        <p class="cat-sub">Metro Ethernet, WiFi, P2P, Kabin ve IP Blok tarifelerini yönetin veya yeni kalem ekleyin</p>
+      </div>
+      <div class="cat-actions">
+        <input
+          type="text"
+          id="catalogSearch"
+          class="price-input"
+          style="min-width: 190px"
+          placeholder="Hız, U veya /subnet ara..."
+          oninput="filterCatalogRows()" />
+        <a class="btn ghost" href="/finance">Finans Paneli</a>
+        <button type="submit" class="btn primary">Tüm Fiyatları Kaydet</button>
       </div>
     </div>
 
-    <div class="table-wrap" style="padding: 15px">
-      <!-- METRO ETHERNET -->
-      <div id="tab-metro" class="tariff-tab">
-        <table class="table">
+    <!-- KPI ÖZETİ -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Kayıtlı Fiyat Anahtarı</div>
+        <div class="kpi-val" id="kpiSavedCount">{{ (prices or {}) | length }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Metro Hız Kademesi</div>
+        <div class="kpi-val" id="kpiMetroCount">8</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">WiFi / P2P Kademe</div>
+        <div class="kpi-val">6 / 4</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Kabin U / IP Blok</div>
+        <div class="kpi-val">8 / 9</div>
+      </div>
+    </div>
+
+    <!-- TABLO-1: Sekmeli Hizmet Tarifeleri -->
+    <section class="cat-card">
+      <div class="cat-card-head">
+        <h2>Tablo-1: Hız &amp; Taahhüt Tarifeleri</h2>
+        <div class="pill-tabs" role="tablist">
+          <button type="button" class="pill-tab active" id="btn-metro" onclick="switchTab('metro')">
+            Metro Ethernet
+          </button>
+          <button type="button" class="pill-tab" id="btn-wifi" onclick="switchTab('wifi')">WiFi İnternet</button>
+          <button type="button" class="pill-tab" id="btn-p2p" onclick="switchTab('p2p')">P2P Kapasite</button>
+        </div>
+      </div>
+
+      <div class="cat-table-wrap">
+        <!-- METRO ETHERNET -->
+        <div id="tab-metro" class="tariff-tab">
+          <table class="cat-table">
+            <thead>
+              <tr>
+                <th>Hız (Mbps)</th>
+                <th>Tarife Fiyatı (TRY)</th>
+                <th>12 Ay Taahhütlü Fiyat</th>
+                <th>24 Ay Taahhütlü Fiyat</th>
+                <th style="width: 60px"></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-metro">
+              {% set metro_speeds = [100, 200, 300, 500, 1000, 2000, 5000, 10000] %} {% for speed in metro_speeds %}
+              <tr data-search="{{ speed }} mbps metro">
+                <td><strong>{{ speed }} Mbps (Metro)</strong></td>
+                <td>
+                  <input
+                    type="number"
+                    step="any"
+                    class="price-input"
+                    name="metro_tarife_{{ speed }}"
+                    value="{{ prices.get('metro_tarife_' ~ speed, '') }}"
+                    placeholder="0.00" />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    step="any"
+                    class="price-input"
+                    name="metro_12_{{ speed }}"
+                    value="{{ prices.get('metro_12_' ~ speed, '') }}"
+                    placeholder="0.00" />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    step="any"
+                    class="price-input"
+                    name="metro_24_{{ speed }}"
+                    value="{{ prices.get('metro_24_' ~ speed, '') }}"
+                    placeholder="0.00" />
+                </td>
+                <td></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- WİFİ İNTERNET -->
+        <div id="tab-wifi" class="tariff-tab" style="display: none">
+          <table class="cat-table">
+            <thead>
+              <tr>
+                <th>Hız (Mbps)</th>
+                <th>Tarife Fiyatı (TRY)</th>
+                <th>12 Ay Taahhütlü Fiyat</th>
+                <th>24 Ay Taahhütlü Fiyat</th>
+                <th style="width: 60px"></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-wifi">
+              {% set wifi_speeds = [50, 100, 150, 200, 300, 500] %} {% for speed in wifi_speeds %}
+              <tr data-search="{{ speed }} mbps wifi">
+                <td><strong>{{ speed }} Mbps (WiFi)</strong></td>
+                <td>
+                  <input
+                    type="number"
+                    step="any"
+                    class="price-input"
+                    name="wifi_tarife_{{ speed }}"
+                    value="{{ prices.get('wifi_tarife_' ~ speed, '') }}"
+                    placeholder="0.00" />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    step="any"
+                    class="price-input"
+                    name="wifi_12_{{ speed }}"
+                    value="{{ prices.get('wifi_12_' ~ speed, '') }}"
+                    placeholder="0.00" />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    step="any"
+                    class="price-input"
+                    name="wifi_24_{{ speed }}"
+                    value="{{ prices.get('wifi_24_' ~ speed, '') }}"
+                    placeholder="0.00" />
+                </td>
+                <td></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- P2P KAPASİTE -->
+        <div id="tab-p2p" class="tariff-tab" style="display: none">
+          <table class="cat-table">
+            <thead>
+              <tr>
+                <th>Kapasite (Mbps)</th>
+                <th>Tarife Fiyatı (TRY)</th>
+                <th>12 Ay Taahhütlü Fiyat</th>
+                <th>24 Ay Taahhütlü Fiyat</th>
+                <th style="width: 60px"></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-p2p">
+              {% set p2p_speeds = [100, 250, 500, 1000] %} {% for speed in p2p_speeds %}
+              <tr data-search="{{ speed }} mbps p2p">
+                <td><strong>{{ speed }} Mbps (P2P)</strong></td>
+                <td>
+                  <input
+                    type="number"
+                    step="any"
+                    class="price-input"
+                    name="p2p_tarife_{{ speed }}"
+                    value="{{ prices.get('p2p_tarife_' ~ speed, '') }}"
+                    placeholder="0.00" />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    step="any"
+                    class="price-input"
+                    name="p2p_12_{{ speed }}"
+                    value="{{ prices.get('p2p_12_' ~ speed, '') }}"
+                    placeholder="0.00" />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    step="any"
+                    class="price-input"
+                    name="p2p_24_{{ speed }}"
+                    value="{{ prices.get('p2p_24_' ~ speed, '') }}"
+                    placeholder="0.00" />
+                </td>
+                <td></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- YENİ HIZ / ÜRÜN EKLEME ÇUBUĞU -->
+      <div class="add-row-bar">
+        <strong style="font-size: 0.85rem; color: #334155">Yeni Hız / Ürün Ekle:</strong>
+        <select id="new_speed_group">
+          <option value="metro">Metro Ethernet</option>
+          <option value="wifi">WiFi İnternet</option>
+          <option value="p2p">P2P Kapasite</option>
+        </select>
+        <input type="text" id="new_speed_label" placeholder="Örn: 2500 Mbps veya Statik IP" style="width: 190px" />
+        <input type="text" id="new_speed_key" placeholder="Anahtar (örn: 2500)" style="width: 140px" />
+        <input type="number" step="any" id="new_speed_tarife" placeholder="Tarife (TL)" style="width: 120px" />
+        <input type="number" step="any" id="new_speed_12" placeholder="12 Ay (TL)" style="width: 120px" />
+        <input type="number" step="any" id="new_speed_24" placeholder="24 Ay (TL)" style="width: 120px" />
+        <button type="button" class="btn-mini" onclick="addSpeedRow()">+ Satır Ekle</button>
+      </div>
+    </section>
+
+    <!-- TABLO-2 VE TABLO-3 YAN YANA -->
+    <div class="two-col-grid">
+      <!-- KABİN U -->
+      <section class="cat-card" style="margin-bottom: 0">
+        <div class="cat-card-head">
+          <h2>Tablo-2: Kabin U Barındırma</h2>
+        </div>
+        <div class="cat-table-wrap">
+          <table class="cat-table">
+            <thead>
+              <tr>
+                <th>Kabin U Adet</th>
+                <th>Tarife Fiyatı (TRY)</th>
+                <th style="width: 55px"></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-kabin">
+              {% set units = [8, 14, 16, 21, 24, 42, 48, 81] %} {% for u in units %}
+              <tr data-search="{{ u }} u kabin">
+                <td><strong>{{ u }} U</strong></td>
+                <td>
+                  <input
+                    type="number"
+                    step="any"
+                    class="price-input"
+                    name="kabin_fiyat_{{ u }}"
+                    value="{{ prices.get('kabin_fiyat_' ~ u, '') }}"
+                    placeholder="0.00" />
+                </td>
+                <td></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="add-row-bar">
+          <input type="text" id="new_kabin_u" placeholder="U Değeri (örn: 32)" style="width: 130px" />
+          <input type="number" step="any" id="new_kabin_price" placeholder="Fiyat (TL)" style="width: 120px" />
+          <button type="button" class="btn-mini" onclick="addKabinRow()">+ U Ekle</button>
+        </div>
+      </section>
+
+      <!-- IP BLOK -->
+      <section class="cat-card" style="margin-bottom: 0">
+        <div class="cat-card-head">
+          <h2>Tablo-3: IP Blok / Subnet</h2>
+        </div>
+        <div class="cat-table-wrap">
+          <table class="cat-table">
+            <thead>
+              <tr>
+                <th>IP Subnet</th>
+                <th>Tarife Fiyatı (TRY)</th>
+                <th style="width: 55px"></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-ip">
+              {% set subnets = ['/32', '/31', '/30', '/29', '/28', '/27', '/26', '/25', '/24'] %} {% for sub in subnets
+              %}
+              <tr data-search="{{ sub }} ip subnet">
+                <td><strong>{{ sub }}</strong></td>
+                <td>
+                  <input
+                    type="number"
+                    step="any"
+                    class="price-input"
+                    name="ip_fiyat_{{ sub | replace('/', '') }}"
+                    value="{{ prices.get('ip_fiyat_' ~ (sub | replace('/', '')), '') }}"
+                    placeholder="0.00" />
+                </td>
+                <td></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="add-row-bar">
+          <input type="text" id="new_ip_sub" placeholder="Subnet (örn: /29)" style="width: 130px" />
+          <input type="number" step="any" id="new_ip_price" placeholder="Fiyat (TL)" style="width: 120px" />
+          <button type="button" class="btn-mini" onclick="addIpRow()">+ Blok Ekle</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- EKSTRA / ÖZEL ÜRÜN & HİZMET KALEMLERİ -->
+    <section class="cat-card">
+      <div class="cat-card-head">
+        <h2>Tablo-4: Ek Ürün &amp; Hizmet Kalemleri</h2>
+        <span style="font-size: 0.82rem; color: var(--text-muted)"
+          >Kurulum ücreti, statik IP, yedekleme vb. özel kalemler</span
+        >
+      </div>
+      <div class="cat-table-wrap">
+        <table class="cat-table">
           <thead>
             <tr>
-              <th>Hız (Mbps)</th>
-              <th>Tarife Fiyatı (TRY)</th>
-              <th>12 Ay Taahhütlü Fiyat</th>
-              <th>24 Ay Taahhütlü Fiyat</th>
+              <th>Kalem Adı</th>
+              <th>Katalog Anahtarı (`name`)</th>
+              <th>Birim Fiyat (TRY)</th>
+              <th style="width: 65px"></th>
             </tr>
           </thead>
-          <tbody>
-            {% set metro_speeds = [100, 200, 300, 500, 1000, 2000, 5000, 10000] %} {% for speed in metro_speeds %}
-            <tr>
-              <td><strong>{{ speed }} Mbps (Metro)</strong></td>
+          <tbody id="tbody-extra">
+            {% set known_prefixes = ['metro_tarife_', 'metro_12_', 'metro_24_', 'wifi_tarife_', 'wifi_12_', 'wifi_24_',
+            'p2p_tarife_', 'p2p_12_', 'p2p_24_', 'kabin_fiyat_', 'ip_fiyat_'] %} {% for k, v in (prices or {}).items()
+            %} {% set ns = namespace(is_known=false) %} {% for pfx in known_prefixes %} {% if k.startswith(pfx) %} {%
+            set ns.is_known = true %} {% endif %} {% endfor %} {% if not ns.is_known %}
+            <tr data-search="{{ k | lower }}">
+              <td><strong>{{ k }}</strong> <span class="badge-custom">Kayıtlı</span></td>
+              <td><code>{{ k }}</code></td>
               <td>
-                <input
-                  type="number"
-                  step="any"
-                  class="form-control"
-                  name="metro_tarife_{{ speed }}"
-                  value="{{ prices.get('metro_tarife_' ~ speed, '') }}"
-                  placeholder="0.00" />
+                <input type="number" step="any" class="price-input" name="{{ k }}" value="{{ v }}" placeholder="0.00" />
               </td>
               <td>
-                <input
-                  type="number"
-                  step="any"
-                  class="form-control"
-                  name="metro_12_{{ speed }}"
-                  value="{{ prices.get('metro_12_' ~ speed, '') }}"
-                  placeholder="0.00" />
-              </td>
-              <td>
-                <input
-                  type="number"
-                  step="any"
-                  class="form-control"
-                  name="metro_24_{{ speed }}"
-                  value="{{ prices.get('metro_24_' ~ speed, '') }}"
-                  placeholder="0.00" />
+                <button type="button" class="btn-del" onclick="this.closest('tr').remove()">Sil</button>
               </td>
             </tr>
-            {% endfor %}
+            {% endif %} {% endfor %}
           </tbody>
         </table>
       </div>
-
-      <!-- WİFİ İNTERNET -->
-      <div id="tab-wifi" class="tariff-tab" style="display: none">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Hız (Mbps)</th>
-              <th>Tarife Fiyatı (TRY)</th>
-              <th>12 Ay Taahhütlü Fiyat</th>
-              <th>24 Ay Taahhütlü Fiyat</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% set wifi_speeds = [50, 100, 150, 200, 300, 500] %} {% for speed in wifi_speeds %}
-            <tr>
-              <td><strong>{{ speed }} Mbps (WiFi)</strong></td>
-              <td>
-                <input
-                  type="number"
-                  step="any"
-                  class="form-control"
-                  name="wifi_tarife_{{ speed }}"
-                  value="{{ prices.get('wifi_tarife_' ~ speed, '') }}"
-                  placeholder="0.00" />
-              </td>
-              <td>
-                <input
-                  type="number"
-                  step="any"
-                  class="form-control"
-                  name="wifi_12_{{ speed }}"
-                  value="{{ prices.get('wifi_12_' ~ speed, '') }}"
-                  placeholder="0.00" />
-              </td>
-              <td>
-                <input
-                  type="number"
-                  step="any"
-                  class="form-control"
-                  name="wifi_24_{{ speed }}"
-                  value="{{ prices.get('wifi_24_' ~ speed, '') }}"
-                  placeholder="0.00" />
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <div class="add-row-bar">
+        <input type="text" id="new_extra_title" placeholder="Görünen Ad (örn: Kurulum Bedeli)" style="width: 210px" />
+        <input type="text" id="new_extra_key" placeholder="Anahtar (örn: kurulum_ucreti)" style="width: 190px" />
+        <input type="number" step="any" id="new_extra_price" placeholder="Fiyat (TL)" style="width: 130px" />
+        <button type="button" class="btn-mini" onclick="addExtraRow()">+ Kalem Ekle</button>
       </div>
+    </section>
+  </form>
 
-      <!-- P2P KAPASİTE -->
-      <div id="tab-p2p" class="tariff-tab" style="display: none">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Kapasite (Mbps)</th>
-              <th>Tarife Fiyatı (TRY)</th>
-              <th>12 Ay Taahhütlü Fiyat</th>
-              <th>24 Ay Taahhütlü Fiyat</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% set p2p_speeds = [100, 250, 500, 1000] %} {% for speed in p2p_speeds %}
-            <tr>
-              <td><strong>{{ speed }} Mbps (P2P)</strong></td>
-              <td>
-                <input
-                  type="number"
-                  step="any"
-                  class="form-control"
-                  name="p2p_tarife_{{ speed }}"
-                  value="{{ prices.get('p2p_tarife_' ~ speed, '') }}"
-                  placeholder="0.00" />
-              </td>
-              <td>
-                <input
-                  type="number"
-                  step="any"
-                  class="form-control"
-                  name="p2p_12_{{ speed }}"
-                  value="{{ prices.get('p2p_12_' ~ speed, '') }}"
-                  placeholder="0.00" />
-              </td>
-              <td>
-                <input
-                  type="number"
-                  step="any"
-                  class="form-control"
-                  name="p2p_24_{{ speed }}"
-                  value="{{ prices.get('p2p_24_' ~ speed, '') }}"
-                  placeholder="0.00" />
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+  <!-- GÜN BAZLI KIST / PRORATION HESAPLAMA SİMÜLATÖRÜ -->
+  <section class="cat-card">
+    <div class="cat-card-head">
+      <h2>Gün Bazlı Kıst / Proration Hesaplama Simülatörü</h2>
+      <span style="font-size: 0.82rem; color: var(--text-muted)"
+        >Upgrade/Downgrade durumlarında gün bazlı fatura oranlama testi</span
+      >
+    </div>
+    <div class="cat-table-wrap">
+      <div class="proration-grid">
+        <div>
+          <label for="old_price">Eski Aylık Tutar (TRY)</label>
+          <input type="number" id="old_price" class="price-input" value="10000" oninput="calculateProration()" />
+        </div>
+        <div>
+          <label for="new_price">Yeni Aylık Tutar (TRY)</label>
+          <input type="number" id="new_price" class="price-input" value="15000" oninput="calculateProration()" />
+        </div>
+        <div>
+          <label for="total_days">Ayın Toplam Günü (30/31)</label>
+          <input type="number" id="total_days" class="price-input" value="30" oninput="calculateProration()" />
+        </div>
+        <div>
+          <label for="old_days">Eski Fiyatın Geçerli Olduğu Gün</label>
+          <input type="number" id="old_days" class="price-input" value="20" oninput="calculateProration()" />
+        </div>
+      </div>
+      <div class="proration-box">
+        <h4>Hesaplama Sonucu</h4>
+        <p id="proration_result" style="font-size: 0.95rem; font-weight: 700; margin: 0"></p>
       </div>
     </div>
   </section>
-
-  <!-- TABLO-2 VE TABLO-3 YAN YANA -->
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px">
-    <section class="panel">
-      <div class="panel-head"><h2>Tablo-2: Kabin U Barındırma</h2></div>
-      <div class="table-wrap">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Kabin U Adet</th>
-              <th>Tarife Fiyatı (TRY)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% set units = [8, 14, 16, 21, 24, 42, 48, 81] %} {% for u in units %}
-            <tr>
-              <td><strong>{{ u }} U</strong></td>
-              <td>
-                <input
-                  type="number"
-                  step="any"
-                  class="form-control"
-                  name="kabin_fiyat_{{ u }}"
-                  value="{{ prices.get('kabin_fiyat_' ~ u, '') }}"
-                  placeholder="0.00" />
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-head"><h2>Tablo-3: IP Blok / Subnet</h2></div>
-      <div class="table-wrap">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>IP Subnet</th>
-              <th>Tarife Fiyatı (TRY)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% set subnets = ['/32', '/31', '/30', '/29', '/28', '/27', '/26', '/25', '/24'] %} {% for sub in subnets %}
-            <tr>
-              <td><strong>{{ sub }}</strong></td>
-              <td>
-                <input
-                  type="number"
-                  step="any"
-                  class="form-control"
-                  name="ip_fiyat_{{ sub | replace('/', '') }}"
-                  value="{{ prices.get('ip_fiyat_' ~ (sub | replace('/', '')), '') }}"
-                  placeholder="0.00" />
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </div>
-</form>
-
-<!-- GÜN BAZLI KIST / PRORATION HESAPLAMA SİMÜLATÖRÜ -->
-<section class="panel">
-  <div class="panel-head">
-    <h2>Gün Bazlı Kıst / Proration Hesaplama Simülatörü</h2>
-    <span class="muted">Upgrade/Downgrade durumlarında gün bazlı fatura oranlama testi</span>
-  </div>
-  <div style="padding: 20px">
-    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px">
-      <div>
-        <label>Eski Aylık Tutar (TRY):</label>
-        <input type="number" id="old_price" class="form-control" value="10000" oninput="calculateProration()" />
-      </div>
-      <div>
-        <label>Yeni Aylık Tutar (TRY):</label>
-        <input type="number" id="new_price" class="form-control" value="15000" oninput="calculateProration()" />
-      </div>
-      <div>
-        <label>Ayın Toplam Günü (30/31):</label>
-        <input type="number" id="total_days" class="form-control" value="30" oninput="calculateProration()" />
-      </div>
-      <div>
-        <label>Eski Fiyatın Geçerli Olduğu Gün:</label>
-        <input type="number" id="old_days" class="form-control" value="20" oninput="calculateProration()" />
-      </div>
-    </div>
-    <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0">
-      <h4>Hesaplama Sonucu:</h4>
-      <p id="proration_result" style="font-size: 15px; font-weight: bold; color: #0f172a; margin-top: 5px">
-        Eski Günler (20 gün): 6,666.67 TL | Yeni Günler (10 gün): 5,000.00 TL |
-        <strong>Toplam Fatura: 11,666.67 TL</strong>
-      </p>
-    </div>
-  </div>
-</section>
+</div>
 
 <script>
   function switchTab(tabName) {
     document.querySelectorAll(".tariff-tab").forEach((el) => (el.style.display = "none"));
-    document.getElementById("btn-metro").className = "btn sm ghost";
-    document.getElementById("btn-wifi").className = "btn sm ghost";
-    document.getElementById("btn-p2p").className = "btn sm ghost";
-
+    ["metro", "wifi", "p2p"].forEach((t) => {
+      document.getElementById("btn-" + t).className = "pill-tab";
+    });
     document.getElementById("tab-" + tabName).style.display = "block";
-    document.getElementById("btn-" + tabName).className = "btn sm primary";
+    document.getElementById("btn-" + tabName).className = "pill-tab active";
+  }
+
+  function slugKey(raw) {
+    return (raw || "")
+      .trim()
+      .toLowerCase()
+      .replace(/ç/g, "c")
+      .replace(/ğ/g, "g")
+      .replace(/ı/g, "i")
+      .replace(/ö/g, "o")
+      .replace(/ş/g, "s")
+      .replace(/ü/g, "u")
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+  }
+
+  function addSpeedRow() {
+    const group = document.getElementById("new_speed_group").value;
+    const rawLabel = document.getElementById("new_speed_label").value.trim();
+    const rawKey = document.getElementById("new_speed_key").value.trim();
+    const key = slugKey(rawKey || rawLabel);
+    if (!key) return;
+
+    const labelText = rawLabel || `${key} (${group.toUpperCase()})`;
+    const pTarife = document.getElementById("new_speed_tarife").value;
+    const p12 = document.getElementById("new_speed_12").value;
+    const p24 = document.getElementById("new_speed_24").value;
+
+    const tbody = document.getElementById("tbody-" + group);
+    const tr = document.createElement("tr");
+    tr.setAttribute("data-search", `${labelText.toLowerCase()} ${key} ${group}`);
+    tr.innerHTML = `
+      <td><strong>${labelText}</strong> <span class="badge-custom">Yeni</span></td>
+      <td><input type="number" step="any" class="price-input" name="${group}_tarife_${key}" value="${pTarife}" placeholder="0.00" /></td>
+      <td><input type="number" step="any" class="price-input" name="${group}_12_${key}" value="${p12}" placeholder="0.00" /></td>
+      <td><input type="number" step="any" class="price-input" name="${group}_24_${key}" value="${p24}" placeholder="0.00" /></td>
+      <td><button type="button" class="btn-del" onclick="this.closest('tr').remove()">Sil</button></td>
+    `;
+    tbody.appendChild(tr);
+
+    document.getElementById("new_speed_label").value = "";
+    document.getElementById("new_speed_key").value = "";
+    document.getElementById("new_speed_tarife").value = "";
+    document.getElementById("new_speed_12").value = "";
+    document.getElementById("new_speed_24").value = "";
+    switchTab(group);
+  }
+
+  function addKabinRow() {
+    const rawU = document.getElementById("new_kabin_u").value.trim();
+    const key = slugKey(rawU);
+    if (!key) return;
+    const price = document.getElementById("new_kabin_price").value;
+    const displayLabel = rawU.toUpperCase().endsWith("U") ? rawU.toUpperCase() : `${rawU} U`;
+
+    const tbody = document.getElementById("tbody-kabin");
+    const tr = document.createElement("tr");
+    tr.setAttribute("data-search", `${displayLabel.toLowerCase()} ${key} kabin`);
+    tr.innerHTML = `
+      <td><strong>${displayLabel}</strong> <span class="badge-custom">Yeni</span></td>
+      <td><input type="number" step="any" class="price-input" name="kabin_fiyat_${key}" value="${price}" placeholder="0.00" /></td>
+      <td><button type="button" class="btn-del" onclick="this.closest('tr').remove()">Sil</button></td>
+    `;
+    tbody.appendChild(tr);
+    document.getElementById("new_kabin_u").value = "";
+    document.getElementById("new_kabin_price").value = "";
+  }
+
+  function addIpRow() {
+    const rawSub = document.getElementById("new_ip_sub").value.trim();
+    const key = rawSub.replace(/\//g, "").replace(/[^a-zA-Z0-9_-]/g, "");
+    if (!key) return;
+    const price = document.getElementById("new_ip_price").value;
+    const displaySub = rawSub.startsWith("/") ? rawSub : `/${key}`;
+
+    const tbody = document.getElementById("tbody-ip");
+    const tr = document.createElement("tr");
+    tr.setAttribute("data-search", `${displaySub.toLowerCase()} ${key} ip subnet`);
+    tr.innerHTML = `
+      <td><strong>${displaySub}</strong> <span class="badge-custom">Yeni</span></td>
+      <td><input type="number" step="any" class="price-input" name="ip_fiyat_${key}" value="${price}" placeholder="0.00" /></td>
+      <td><button type="button" class="btn-del" onclick="this.closest('tr').remove()">Sil</button></td>
+    `;
+    tbody.appendChild(tr);
+    document.getElementById("new_ip_sub").value = "";
+    document.getElementById("new_ip_price").value = "";
+  }
+
+  function addExtraRow() {
+    const title = document.getElementById("new_extra_title").value.trim();
+    const rawKey = document.getElementById("new_extra_key").value.trim();
+    const key = slugKey(rawKey || title);
+    if (!key) return;
+    const price = document.getElementById("new_extra_price").value;
+    const label = title || key;
+
+    const tbody = document.getElementById("tbody-extra");
+    const tr = document.createElement("tr");
+    tr.setAttribute("data-search", `${label.toLowerCase()} ${key}`);
+    tr.innerHTML = `
+      <td><strong>${label}</strong> <span class="badge-custom">Yeni</span></td>
+      <td><code>${key}</code></td>
+      <td><input type="number" step="any" class="price-input" name="${key}" value="${price}" placeholder="0.00" /></td>
+      <td><button type="button" class="btn-del" onclick="this.closest('tr').remove()">Sil</button></td>
+    `;
+    tbody.appendChild(tr);
+    document.getElementById("new_extra_title").value = "";
+    document.getElementById("new_extra_key").value = "";
+    document.getElementById("new_extra_price").value = "";
+  }
+
+  function filterCatalogRows() {
+    const q = (document.getElementById("catalogSearch").value || "").trim().toLowerCase();
+    document.querySelectorAll("table.cat-table tbody tr[data-search]").forEach((tr) => {
+      const hay = tr.getAttribute("data-search") || "";
+      tr.style.display = !q || hay.includes(q) ? "" : "none";
+    });
   }
 
   function calculateProration() {

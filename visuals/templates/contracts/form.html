@@ -1,121 +1,175 @@
-{% extends "base.html" %}
-{% block content %}
+{% extends "base.html" %} {% block content %}
+<style>
+  form.panel,
+  form.panel label,
+  form.panel h2,
+  form.panel select,
+  form.panel select option,
+  form.panel input,
+  form.panel textarea {
+    color: #111827 !important;
+    background-color: #ffffff !important;
+  }
+</style>
+
 <div class="page-head">
   <div>
-    <h1>{% if sale %}Sözleşme Düzenle{% else %}Yeni Sözleşme{% endif %}</h1>
-    <p class="page-meta">Müşteri hiyerarşisine bağlı hizmet satışı</p>
+    <h1>Yeni Servis</h1>
+    <div class="page-meta">Müşteri seçin, servis/ürün ve fiyat bilgilerini girin</div>
   </div>
-  <a class="btn ghost" href="/contracts">Liste</a>
+  <a class="btn ghost" href="/servisler">Servis Listesi</a>
 </div>
 
-{% if error %}<div class="error">{{ error }}</div>{% endif %}
+{% if error %}
+<div class="error">{{ error }}</div>
+{% endif %}
 
-<form method="post" class="panel">
+<form
+  method="post"
+  action="/servisler/new"
+  id="service_form"
+  class="panel"
+  style="max-width: 760px"
+  data-catalog-prices="{{ (prices or {}) | tojson | e }}">
   <div class="grid-2">
     <div class="field">
-      <label>Otel / Müşteri Adı *</label>
-      <select name="customer_id" required {% if sale %}disabled{% endif %}>
-        {% for c in customers %}
-        <option value="{{ c.id }}" {% if (sale and sale.customer_id==c.id) or (selected_customer_id and selected_customer_id==c.id) %}selected{% endif %}>
-          {{ c.otel_adi }} (#{{ c.id }})
+      <label>Müşteri *</label>
+      <!-- prettier-ignore -->
+      <select name="customer_id" id="customer_id" required>
+        <option value="">— Müşteri seçin —</option>
+        {% for c in customers or [] %}
+        {% set is_selected = (selected_customer_id is not none) and ((selected_customer_id | string) == (c.id | string)) %}
+        <option value="{{ c.id }}"{% if is_selected %} selected{% endif %}>
+          {{ c.otel_adi or c.firma_unvan or c.yetkili_adi or ("Müşteri #" ~ c.id) }}{% if c.musteri_no %} ({{ c.musteri_no }}){% endif %}
+        </option>
+        {% endfor %}
+    </select>
+    </div>
+
+    <div class="field">
+      <label>Servis Tipi</label>
+      <select name="service_type" id="service_type">
+        <option value="internet">Internet</option>
+        <option value="hotspot" selected>Hotspot</option>
+        <option value="interfiber">Interfiber</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="field">
+      <label>Katalog Ürünü / Servis *</label>
+      <select name="customer_id" id="customer_id" required>
+        <option value="">— Müşteri seçin —</option>
+        {% for c in customers or [] %} {% set is_selected = (selected_customer_id is not none) and
+        ((selected_customer_id | string) == (c.id | string)) %}
+        <option value="{{ c.id }}" {% if is_selected %} selected{% endif %}>
+          {{ c.otel_adi or c.firma_unvan or c.yetkili_adi or ("Müşteri #" ~ c.id) }}{% if c.musteri_no %} ({{
+          c.musteri_no }}){% endif %}
         </option>
         {% endfor %}
       </select>
-      {% if sale %}<input type="hidden" name="customer_id" value="{{ sale.customer_id }}" />{% endif %}
     </div>
-    <div class="field">
-      <label>Hizmet Tipi *</label>
-      <select name="service_type" id="service_type">
-        <option value="hotspot" {% if not sale or sale.service_type=='hotspot' %}selected{% endif %}>Hotspot</option>
-        <option value="internet" {% if sale and sale.service_type=='internet' %}selected{% endif %}>İnternet</option>
-        <option value="interfiber" {% if sale and sale.service_type=='interfiber' %}selected{% endif %}>Interfiber</option>
-      </select>
-    </div>
-  </div>
 
-  <div class="grid-3">
-    <div class="field">
-      <label>Fiyat *</label>
-      <input name="fiyat" type="number" step="0.01" required value="{{ sale.fiyat if sale and sale.fiyat is not none else '' }}" />
-    </div>
-    <div class="field">
-      <label>Para Birimi</label>
-      <select name="para_birimi">
-        {% for cur in ['TL','USD','EUR'] %}
-        <option value="{{ cur }}" {% if (sale and sale.para_birimi==cur) or (not sale and cur=='TL') %}selected{% endif %}>{{ cur }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="field">
-      <label>İnternet Hızı</label>
-      <select name="internet_hiz">
-        <option value="">—</option>
-        {% for h in hizler %}
-        <option value="{{ h }}" {% if sale and sale.internet_hiz==h %}selected{% endif %}>{{ h }}</option>
-        {% endfor %}
-      </select>
-    </div>
-  </div>
-
-  <div class="grid-3">
-    <div class="field">
-      <label>Sözleşme Numarası</label>
-      <input name="sozlesme_no" value="{{ sale.sozlesme_no if sale else '' }}" />
-    </div>
-    <div class="field">
-      <label>Sözleşme Tarihi (YYYY-MM-DD)</label>
-      <input type="date" name="sozlesme_baslangic_tarihi" id="sozlesme_baslangic_tarihi"
-             value="{{ sale.sozlesme_baslangic_tarihi if sale and sale.sozlesme_baslangic_tarihi else today }}" />
-    </div>
     <div class="field">
       <label>Durum</label>
-      <select name="contract_durum">
-        {% for st in ['onaylandı','tekliflendirildi','kabul_edilmedi','bitti'] %}
-        <option value="{{ st }}" {% if sale and sale.contract_durum==st %}selected{% endif %}>{{ st }}</option>
-        {% endfor %}
+      <select name="durum">
+        <option value="onaylandı" selected>Onaylandı</option>
+        <option value="tekliflendirildi">Tekliflendirildi</option>
+        <option value="kurulum">Kurulum</option>
+        <option value="iptal">İptal</option>
       </select>
     </div>
   </div>
 
+  <input type="hidden" name="product_name" id="product_name" />
+
   <div class="grid-3">
     <div class="field">
-      <label>Paket Adı</label>
-      <select name="paket_adi" id="paket_adi">
-        <option value="">—</option>
-        {% for p in paketler %}
-        <option value="{{ p }}" {% if sale and sale.paket_adi==p %}selected{% endif %}>{{ p }}</option>
-        {% endfor %}
-      </select>
+      <label>Birim Fiyat (TL) *</label>
+      <input name="unit_price" id="unit_price" type="number" step="0.01" min="0" required />
     </div>
     <div class="field">
-      <label>Süre</label>
-      <select name="sozlesme_suresi" id="sozlesme_suresi">
-        {% for d in sureler %}
-        <option value="{{ d }}" {% if (sale and sale.sozlesme_suresi==d) or (not sale and d=='3 Yıl') %}selected{% endif %}>{{ d }}</option>
-        {% endfor %}
-      </select>
+      <label>Adet</label>
+      <input name="quantity" id="quantity" type="number" step="1" min="1" value="1" />
     </div>
     <div class="field">
-      <label>Bitiş Tarihi</label>
-      <input type="date" name="sozlesme_bitis_tarihi" id="sozlesme_bitis_tarihi"
-             value="{{ sale.sozlesme_bitis_tarihi if sale and sale.sozlesme_bitis_tarihi else '' }}" />
-      {% if sale %}<div class="hint">Kalan: <span class="badge {{ sale.remaining_tone }}">{{ sale.remaining_label }}</span></div>{% endif %}
+      <label>Başlangıç Tarihi</label>
+      <input name="start_date" type="date" value="{{ today or '' }}" />
     </div>
   </div>
 
   <div class="field">
-    <label>Orijinal Sözleşme No</label>
-    <input name="orijinal_sozlesme_no" value="{{ sale.orijinal_sozlesme_no if sale else '' }}" />
+    <label>Bitiş Tarihi</label>
+    <input name="end_date" type="date" />
   </div>
 
-  <div class="toolbar">
-    <button class="btn" type="submit">Kaydet</button>
-    {% if sale %}
-    <a class="btn ghost" href="/contracts/{{ sale.id }}/auto">Otomatik Sözleşme</a>
-    {% endif %}
+  <h2>Teknik Bilgiler (Opsiyonel)</h2>
+  <div class="grid-2">
+    <div class="field">
+      <label>POP</label>
+      <select name="pop_id">
+        <option value="">— yok —</option>
+        {% for p in pops or [] %}
+        <option value="{{ p.id }}">{{ p.pop_kodu }} — {{ p.pop_adi }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label>RADIUS Kullanıcı Adı</label>
+      <input name="radius_username" placeholder="opsiyonel" />
+    </div>
+  </div>
+
+  <div class="toolbar" style="margin-top: 1rem">
+    <button class="btn green" type="submit">Kaydet</button>
+    <a class="btn ghost" href="/servisler">İptal</a>
   </div>
 </form>
-{% endblock %}
-{% block scripts %}
-<script>if (window.mtsBindContractDates) window.mtsBindContractDates();</script>
+
+<script>
+  function getCatalogPrices() {
+    const form = document.getElementById("service_form");
+    if (!form) return {};
+    const raw = form.getAttribute("data-catalog-prices");
+    if (!raw) return {};
+    try {
+      return JSON.parse(raw);
+    } catch (_err) {
+      return {};
+    }
+  }
+
+  const CATALOG_PRICES = getCatalogPrices();
+
+  function onCatalogProductChange() {
+    const sel = document.getElementById("product_select");
+    const nameInput = document.getElementById("product_name");
+    const priceInput = document.getElementById("unit_price");
+    if (!sel || !nameInput || !priceInput) return;
+
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value) {
+      nameInput.value = "";
+      return;
+    }
+
+    const pName = opt.getAttribute("data-name") || "";
+    const pPrice = opt.getAttribute("data-price") || "";
+
+    nameInput.value = pName;
+
+    if (CATALOG_PRICES && Object.prototype.hasOwnProperty.call(CATALOG_PRICES, pName)) {
+      const val = CATALOG_PRICES[pName];
+      if (val !== null && val !== undefined && val !== "") {
+        priceInput.value = val;
+        return;
+      }
+    }
+
+    if (pPrice !== "") {
+      priceInput.value = pPrice;
+    }
+  }
+</script>
 {% endblock %}

@@ -162,8 +162,8 @@ class FinanceRepository:
         return tx
 
     def list_products(self) -> list[Product]:
-        return list(self.db.scalars(select(Product).order_by(Product.name)).all())
-
+        return list(self.db.scalars(select(Product).order_by(Product.product_name)).all())
+    
     def create_product(self, data: dict[str, Any]) -> Product:
         p = Product(**data)
         self.db.add(p)

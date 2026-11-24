@@ -18,7 +18,7 @@
       <select name="customer_id" required>
         <option value="">— Müşteri seçin —</option>
         {% for c in customers %}
-        <option value="{{ c.id }}" {% if selected_customer_id and selected_customer_id == c.id %}selected{% endif %}></option>
+        <option value="{{ c.id }}" {% if selected_customer_id is not none and (selected_customer_id | string) == (c.id | string) %}selected{% endif %}>
           {{ c.otel_adi }}{% if c.musteri_no %} ({{ c.musteri_no }}){% endif %}
         </option>
         {% endfor %}
@@ -37,21 +37,18 @@
 
   <div class="grid-2">
     <div class="field">
-      <label>Ürün / Servis Adı *</label>
-      <input
-        list="product-list"
-        name="product_name"
-        id="product_name"
-        required
-        placeholder="Katalogdan seçin veya yazın"
-        oninput="applyCatalogPrice()" />
-      <datalist id="product-list">
-        {% for p in products or [] %}
-        <option value="{{ p.name if p.name is defined else p }}"></option>
-        {% endfor %} {% for k in (prices or {}).keys() %}
-        <option value="{{ k }}"></option>
+      <label>Katalog Ürünü / Servis *</label>
+      <select name="product_id" id="product_select" required onchange="onCatalogProductChange()">
+        <option value="">— Katalogdan ürün seçin —</option>
+        {% for p in products or [] %} {% set p_id = p.id if p.id is defined else '' %} {% set p_name = p.product_name if
+        p.product_name is defined else (p.name if p.name is defined else p) %} {% set p_price = p.price if p.price is
+        defined else 0 %}
+        <option value="{{ p_id }}" data-name="{{ p_name }}" data-price="{{ p_price }}">
+          {{ p_name }}{% if p.speed_or_capacity_option %} — {{ p.speed_or_capacity_option }}{% endif %}{% if p_price %}
+          ({{ p_price }} TL){% endif %}
+        </option>
         {% endfor %}
-      </datalist>
+      </select>
     </div>
 
     <div class="field">
@@ -110,13 +107,33 @@
 
 <script>
   const CATALOG_PRICES = {{ (prices or {}) | tojson }};
-  function applyCatalogPrice() {
-    const name = document.getElementById('product_name').value;
-    if (CATALOG_PRICES && Object.prototype.hasOwnProperty.call(CATALOG_PRICES, name)) {
-      const val = CATALOG_PRICES[name];
-      if (val !== null && val !== undefined && val !== '') {
-        document.getElementById('unit_price').value = val;
-      }
+
+  function onCatalogProductChange() {
+    const select = document.getElementById('product_select');
+    const priceInput = document.getElementById('unit_price');
+    if (!select || !priceInput) return;
+
+    const opt = select.options[select.selectedIndex];
+    if (!opt || !opt.value) {
+      priceInput.value = '';
+      return;
+    }
+
+    const pName = opt.dataset.name || '';
+    const pId = opt.value;
+
+    // 1. Check saved catalog prices map (by name or id), then fallback to option's data-price
+    let resolvedPrice = null;
+    if (CATALOG_PRICES && Object.prototype.hasOwnProperty.call(CATALOG_PRICES, pName)) {
+      resolvedPrice = CATALOG_PRICES[pName];
+    } else if (CATALOG_PRICES && Object.prototype.hasOwnProperty.call(CATALOG_PRICES, pId)) {
+      resolvedPrice = CATALOG_PRICES[pId];
+    } else if (opt.dataset.price !== undefined && opt.dataset.price !== '') {
+      resolvedPrice = opt.dataset.price;
+    }
+
+    if (resolvedPrice !== null && resolvedPrice !== undefined && resolvedPrice !== '') {
+      priceInput.value = resolvedPrice;
     }
   }
 </script>

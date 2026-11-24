@@ -72,23 +72,26 @@ class FinancialTransaction(Base):
         DateTime, server_default=func.now(), nullable=True
     )
 
-
 class Product(Base):
     __tablename__ = "products"
+
+    @property
+    def name(self) -> str:
+        return self.product_name
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     product_name: Mapped[str] = mapped_column(String(255), nullable=False)
     billing_type: Mapped[str] = mapped_column(String(50), nullable=False)  # "aylık" or "tek seferlik"
-    speed_or_capacity_option: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # e.g., "100 Mbps ME Internet Hizmeti"
-    table_reference: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # e.g., "Tablo-1", "Tablo-2"
-    
+    speed_or_capacity_option: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    table_reference: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+
     # Existing fields kept for compatibility
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     price: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False, default=0)
     currency: Mapped[str] = mapped_column(String(10), nullable=False, default="TRY")
     vat_rate: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
     image_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    
+
     created_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime, server_default=func.now(), nullable=True
     )
