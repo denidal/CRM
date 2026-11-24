@@ -307,6 +307,11 @@ def servis_new_form(
         raw_prices = fin.get_catalog_prices() or {}
         print("FINANCE PRODUCTS:", len(products), products, flush=True)
         print("FINANCE RAW PRICES:", raw_prices, flush=True)
+        print("RAW_PRICES KEYS:", list(raw_prices.keys()), flush=True)
+        print("IP / KABIN KEYS:", {
+            k: v for k, v in raw_prices.items()
+            if "ip" in str(k).lower() or "kabin" in str(k).lower() or "/32" in str(k).lower()
+        }, flush=True)
         saved_prices = {
             str(k): (float(v) if v is not None else None)
             for k, v in raw_prices.items()

@@ -3,6 +3,7 @@
   form.panel,
   form.panel label,
   form.panel h2,
+  form.panel h3,
   form.panel select,
   form.panel select option,
   form.panel input,
@@ -10,12 +11,24 @@
     color: #111827 !important;
     background-color: #ffffff !important;
   }
+  .catalog-subbox {
+    border: 1px solid #d1d5db;
+    background: #f9fafb !important;
+    border-radius: 8px;
+    padding: 14px;
+    margin: 12px 0 16px 0;
+  }
+  .price-badge {
+    font-weight: 600;
+    margin-top: 6px;
+    font-size: 0.92rem;
+  }
 </style>
 
 <div class="page-head">
   <div>
     <h1>Yeni Servis</h1>
-    <div class="page-meta">Müşteri seçin, servis/ürün ve fiyat bilgilerini girin</div>
+    <div class="page-meta">Müşteri ve servis tipini seçin; katalog tarife ve fiyat alt bölümü açılacaktır</div>
   </div>
   <a class="btn ghost" href="/servisler">Servis Listesi</a>
 </div>
@@ -29,7 +42,8 @@
   action="/servisler/new"
   id="service_form"
   class="panel"
-  style="max-width: 760px"
+  style="max-width: 780px"
+  data-products="{{ (products or []) | tojson | e }}"
   data-catalog-prices="{{ (prices or {}) | tojson | e }}">
   <div class="grid-2">
     <div class="field">
@@ -47,56 +61,42 @@
     </div>
 
     <div class="field">
-      <label>Servis Tipi</label>
-      <select name="service_type" id="service_type">
-        <option value="internet">Internet</option>
-        <option value="hotspot" selected>Hotspot</option>
-        <option value="interfiber">Interfiber</option>
+      <label>Katalog Servis Tipi *</label>
+      <select name="service_type" id="catalog_type_select" onchange="onCatalogTypeChange()" required>
+        <option value="">— Tip seçin (p2p, metro, wifi) —</option>
+        <option value="p2p">p2p</option>
+        <option value="metro">metro</option>
+        <option value="wifi">wifi</option>
       </select>
     </div>
   </div>
 
-  <div class="grid-2">
-    <div class="field">
-      <label>Katalog Ürünü / Servis *</label>
-      <select name="product_id" id="product_select" onchange="onCatalogProductChange()">
-        <option value="">— Katalog ürünü seçin —</option>
-        {% for p in products or [] %} {% set pid = p.id if p.id is defined else p.get("id") %} {% set pname = p.name if
-        p.name is defined else (p.get("name") or p.get("paket_adi") or ("Ürün #" ~ pid)) %} {% set pprice = p.price if
-        p.price is defined else (p.get("price") or p.get("fiyat") or "") %}
-        <option value="{{ pid }}" data-name="{{ pname }}" data-price="{{ pprice }}">
-          {{ pname }}{% if pprice != "" %} ({{ pprice }} TL){% endif %}
-        </option>
-        {% endfor %}
-      </select>
-      {% if catalog_debug is defined and catalog_debug %}
-      <div
-        style="
-          background: #fff3cd;
-          color: #333;
-          padding: 6px 10px;
-          margin-top: 6px;
-          border: 1px solid #ffc107;
-          font-family: monospace;
-          font-size: 12px;
-        ">
-        <strong>urunler debug:</strong> {{ catalog_debug }}
+  <!-- Seçilen tipe göre açılan katalog alt bölümü -->
+  <div id="catalog_subsection" class="catalog-subbox" style="display: none">
+    <h3 style="margin-top: 0">Katalog Detayı ve Fiyatlandırma</h3>
+    <div class="grid-2">
+      <div class="field">
+        <label>Katalog Ürünü / Tarife *</label>
+        <select name="product_id" id="catalog_item_select" onchange="onCatalogItemOrTierChange()">
+          <option value="">— Ürün / tarife seçin —</option>
+        </select>
       </div>
-      {% endif %}
+
+      <div class="field">
+        <label>Taahhüt / Fiyat Tipi *</label>
+        <select name="taahhut_suresi" id="commitment_tier_select" onchange="onCatalogItemOrTierChange()">
+          <option value="taahhutsuz" data-price-key="tarife">Tarife Fiyatı (Taahhütsüz)</option>
+          <option value="12_ay" data-price-key="12_ay">12 Ay Taahhütlü Fiyatı</option>
+          <option value="24_ay" data-price-key="24_ay">24 Ay Taahhütlü Fiyatı</option>
+        </select>
+      </div>
     </div>
 
-    <div class="field">
-      <label>Durum</label>
-      <select name="durum">
-        <option value="onaylandı" selected>Onaylandı</option>
-        <option value="tekliflendirildi">Tekliflendirildi</option>
-        <option value="kurulum">Kurulum</option>
-        <option value="iptal">İptal</option>
-      </select>
-    </div>
+    <div id="selected_catalog_summary" class="price-badge"></div>
   </div>
 
   <input type="hidden" name="product_name" id="product_name" />
+  <input type="hidden" name="internet_hiz" id="internet_hiz" />
 
   <div class="grid-3">
     <div class="field">
@@ -105,7 +105,7 @@
     </div>
     <div class="field">
       <label>Adet</label>
-      <input name="quantity" id="quantity" type="number" step="1" min="1" value="1" />
+      <input name="quantity" id="quantity" type="number" step="1" min="1" value="1" oninput="updateTotalPreview()" />
     </div>
     <div class="field">
       <label>Başlangıç Tarihi</label>
@@ -113,13 +113,34 @@
     </div>
   </div>
 
-  <div class="field">
-    <label>Bitiş Tarihi</label>
-    <input name="end_date" type="date" />
+  <div id="line_total_preview" class="price-badge" style="margin-bottom: 12px"></div>
+
+  <div class="grid-2">
+    <div class="field">
+      <label>Bitiş Tarihi</label>
+      <input name="end_date" type="date" />
+    </div>
+    <div class="field">
+      <label>Durum</label>
+      <select name="durum">
+        <option value="teklif">Teklif</option>
+        <option value="kurulum">Kurulum</option>
+        <option value="upgrade/downgrade">Upgrade / Downgrade</option>
+        <option value="handover">Handover</option>
+        <option value="acc_mnger_onay">Acc Mnger Onay</option>
+        <option value="onaylandı" selected>Faturalanan (Aktif)</option>
+        <option value="iptal">İptal</option>
+        <option value="deaktif">Deaktif</option>
+      </select>
+    </div>
   </div>
 
-  <h2>Teknik Bilgiler (Opsiyonel)</h2>
+  <h2>Lokasyon ve Teknik Bilgiler</h2>
   <div class="grid-2">
+    <div class="field">
+      <label>Lokasyon Adı / Kodu</label>
+      <input name="lokasyon_adi" id="lokasyon_adi" placeholder="Örn: Merkez Bina / LOC-01" />
+    </div>
     <div class="field">
       <label>POP</label>
       <select name="pop_id">
@@ -129,10 +150,11 @@
         {% endfor %}
       </select>
     </div>
-    <div class="field">
-      <label>RADIUS Kullanıcı Adı</label>
-      <input name="radius_username" placeholder="opsiyonel" />
-    </div>
+  </div>
+
+  <div class="field">
+    <label>RADIUS Kullanıcı Adı</label>
+    <input name="radius_username" placeholder="opsiyonel" />
   </div>
 
   <div class="toolbar" style="margin-top: 1rem">
@@ -142,65 +164,138 @@
 </form>
 
 <script>
-  function getCatalogPrices() {
-    const form = document.getElementById("service_form");
-    if (!form) return {};
-    const raw = form.getAttribute("data-catalog-prices");
-    if (!raw) return {};
-    try {
-      return JSON.parse(raw);
-    } catch (_err) {
-      return {};
+  const formEl = document.getElementById("service_form");
+  const RAW_PRODUCTS = JSON.parse(formEl.getAttribute("data-products") || "[]");
+  const RAW_PRICES = JSON.parse(formEl.getAttribute("data-catalog-prices") || "{}");
+
+  function parseNum(v) {
+    if (v === null || v === undefined || v === "") return null;
+    if (typeof v === "number") return Number.isFinite(v) ? v : null;
+    const n = Number(String(v).trim().replace(",", "."));
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function detectType(item) {
+    const raw = String(item.service_type || item.type || item.category || item.code || item.name || "").toLowerCase();
+    if (raw.includes("p2p")) return "p2p";
+    if (raw.includes("metro") || raw.includes("me_internet") || raw.includes("me internet")) return "metro";
+    if (raw.includes("wifi")) return "wifi";
+    return null;
+  }
+
+  function buildCatalogList() {
+    const items = [];
+    for (const p of RAW_PRODUCTS) {
+      const t = detectType(p);
+      if (!t) continue;
+      const id = p.id ?? p.code ?? p.name;
+      const name = p.name || p.paket_adi || String(id);
+      const basePrice = parseNum(p.price ?? p.fiyat ?? RAW_PRICES[id] ?? RAW_PRICES[name]);
+      items.push({
+        id: String(id),
+        type: t,
+        name,
+        tarifePrice: parseNum(p.price_tarife ?? p.tarife_fiyat) ?? basePrice,
+        p12Price: parseNum(p.price_12 ?? p.fiyat_12) ?? basePrice,
+        p24Price: parseNum(p.price_24 ?? p.fiyat_24) ?? basePrice,
+      });
     }
+
+    // Katalog fiyat sözlüğünde olup listeye girmeyen kalemler için yedek üret
+    for (const [k, v] of Object.entries(RAW_PRICES)) {
+      const t = detectType({ code: k, name: k });
+      if (!t) continue;
+      const exists = items.some((x) => x.id === String(k) || x.name === String(k));
+      if (!exists) {
+        const val = parseNum(v);
+        items.push({
+          id: String(k),
+          type: t,
+          name: k.replaceAll("_", " "),
+          tarifePrice: val,
+          p12Price: val,
+          p24Price: val,
+        });
+      }
+    }
+    return items;
   }
 
-  const CATALOG_PRICES = getCatalogPrices();
+  const CATALOG_ITEMS = buildCatalogList();
 
-  function normalizeNumber(val) {
-    if (val === null || val === undefined || val === "") return "";
-    if (typeof val === "number") return Number.isFinite(val) ? String(val) : "";
-    const cleaned = String(val).trim().replace(/\s+/g, "").replace(",", ".");
-    const num = Number(cleaned);
-    return Number.isFinite(num) ? String(num) : "";
-  }
+  function onCatalogTypeChange() {
+    const typeVal = document.getElementById("catalog_type_select").value;
+    const subBox = document.getElementById("catalog_subsection");
+    const itemSel = document.getElementById("catalog_item_select");
+    const summaryEl = document.getElementById("selected_catalog_summary");
 
-  function onCatalogProductChange() {
-    const sel = document.getElementById("product_select");
-    const nameInput = document.getElementById("product_name");
-    const priceInput = document.getElementById("unit_price");
-    if (!sel || !nameInput || !priceInput) return;
+    itemSel.innerHTML = '<option value="">— Ürün / tarife seçin —</option>';
+    summaryEl.textContent = "";
 
-    const opt = sel.options[sel.selectedIndex];
-    if (!opt || !opt.value) {
-      nameInput.value = "";
+    if (!typeVal) {
+      subBox.style.display = "none";
       return;
     }
 
-    const pId = opt.value;
-    const pName = opt.getAttribute("data-name") || "";
-    const pPrice = opt.getAttribute("data-price") || "";
+    subBox.style.display = "block";
+    const matching = CATALOG_ITEMS.filter((x) => x.type === typeVal);
 
-    nameInput.value = pName;
-
-    // Önce ürün ID'sine, sonra ürün adına göre fiyat sözlüğünü kontrol et
-    if (CATALOG_PRICES) {
-      const matchedVal = Object.prototype.hasOwnProperty.call(CATALOG_PRICES, pId)
-        ? CATALOG_PRICES[pId]
-        : Object.prototype.hasOwnProperty.call(CATALOG_PRICES, pName)
-          ? CATALOG_PRICES[pName]
-          : null;
-
-      const normalized = normalizeNumber(matchedVal);
-      if (normalized !== "") {
-        priceInput.value = normalized;
-        return;
-      }
+    for (const item of matching) {
+      const opt = document.createElement("option");
+      opt.value = item.id;
+      opt.textContent = item.name;
+      opt.dataset.itemName = item.name;
+      opt.dataset.tarife = item.tarifePrice ?? "";
+      opt.dataset.p12 = item.p12Price ?? "";
+      opt.dataset.p24 = item.p24Price ?? "";
+      itemSel.appendChild(opt);
     }
 
-    const fallbackPrice = normalizeNumber(pPrice);
-    if (fallbackPrice !== "") {
-      priceInput.value = fallbackPrice;
+    if (matching.length > 0) {
+      itemSel.selectedIndex = 1;
+      onCatalogItemOrTierChange();
     }
+  }
+
+  function onCatalogItemOrTierChange() {
+    const itemSel = document.getElementById("catalog_item_select");
+    const tierSel = document.getElementById("commitment_tier_select");
+    const nameInput = document.getElementById("product_name");
+    const speedInput = document.getElementById("internet_hiz");
+    const priceInput = document.getElementById("unit_price");
+    const summaryEl = document.getElementById("selected_catalog_summary");
+
+    const opt = itemSel.options[itemSel.selectedIndex];
+    const tierOpt = tierSel.options[tierSel.selectedIndex];
+    if (!opt || !opt.value) return;
+
+    const itemName = opt.dataset.itemName || opt.textContent;
+    const key = tierOpt ? tierOpt.dataset.priceKey : "tarife";
+
+    const priceMap = {
+      tarife: parseNum(opt.dataset.tarife),
+      "12_ay": parseNum(opt.dataset.p12),
+      "24_ay": parseNum(opt.dataset.p24),
+    };
+
+    const chosenPrice = priceMap[key] ?? priceMap.tarife;
+    nameInput.value = itemName;
+    speedInput.value = itemName;
+
+    if (chosenPrice !== null) {
+      priceInput.value = chosenPrice.toFixed(2);
+    }
+
+    summaryEl.textContent = `Seçili: ${itemName} | Tarife: ${priceMap.tarife ?? "—"} TL · 12 Ay: ${priceMap["12_ay"] ?? "—"} TL · 24 Ay: ${priceMap["24_ay"] ?? "—"} TL`;
+
+    updateTotalPreview();
+  }
+
+  function updateTotalPreview() {
+    const price = parseNum(document.getElementById("unit_price").value) || 0;
+    const qty = parseNum(document.getElementById("quantity").value) || 1;
+    const totalEl = document.getElementById("line_total_preview");
+    totalEl.textContent = `Hesaplanan Toplam Tutar: ${(price * qty).toFixed(2)} TL`;
   }
 </script>
 {% endblock %}
