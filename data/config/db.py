@@ -110,12 +110,29 @@ SessionLocal = sessionmaker(
 )
 
 
+def _ensure_columns(engine: Engine) -> None:
+    """Add columns introduced on models after initial table creation."""
+    if not is_postgres():
+        return
+
+    statements = [
+        "ALTER TABLE service_sales ADD COLUMN IF NOT EXISTS location_id INTEGER",
+        "ALTER TABLE service_sales ADD COLUMN IF NOT EXISTS product_id INTEGER",
+        "ALTER TABLE service_sales ADD COLUMN IF NOT EXISTS taahhut_suresi VARCHAR(30)",
+        "ALTER TABLE service_sales ADD COLUMN IF NOT EXISTS catalog_price_key VARCHAR(100)",
+    ]
+    with engine.begin() as conn:
+        for stmt in statements:
+            conn.execute(text(stmt))
+
+
 def init_schema() -> None:
-    """Create ORM tables (safe for empty local Postgres)."""
+    """Create ORM tables and ensure missing columns exist."""
     import data.models  # noqa: F401
 
-    Base.metadata.create_all(bind=get_app_engine())
-
+    engine = get_app_engine()
+    Base.metadata.create_all(bind=engine)
+    _ensure_columns(engine)
 
 def init_engines() -> None:
     """Warm pools and verify connectivity."""
