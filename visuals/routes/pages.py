@@ -287,7 +287,6 @@ def servisler_list(
             "title": "Servisler",
         },
     )
-from datetime import date
 
 @router.get("/servisler/new", response_class=HTMLResponse)
 def servis_new_form(
@@ -299,18 +298,32 @@ def servis_new_form(
     from data.models.service_sale import COMMITMENT_OPTIONS, SERVICE_STATUSES
     from system.services.finance_service import FinanceService
 
+    print("HIT /servisler/new", customer_id, location_id, flush=True)
+
     svc_sales = ServiceSaleService(db)
     try:
         fin = FinanceService(db)
         products = fin.list_products() or []
         raw_prices = fin.get_catalog_prices() or {}
+        print("FINANCE PRODUCTS:", len(products), products, flush=True)
+        print("FINANCE RAW PRICES:", raw_prices, flush=True)
         saved_prices = {
             str(k): (float(v) if v is not None else None)
             for k, v in raw_prices.items()
         }
+        if not products and saved_prices:
+            products = [
+                {
+                    "id": code,
+                    "code": code,
+                    "name": code.replace("_", " ").title(),
+                    "price": price,
+                }
+                for code, price in saved_prices.items()
+            ]
     except Exception as exc:
         db.rollback()
-        print("CATALOG ERR:", repr(exc))
+        print("CATALOG ERR:", repr(exc), flush=True)
         products = []
         saved_prices = {}
 
@@ -336,7 +349,7 @@ def servis_new_form(
             "title": "Yeni Servis",
         },
     )
-from fastapi.responses import Response
+
 
 @router.get("/favicon.ico", include_in_schema=False)
 def favicon():

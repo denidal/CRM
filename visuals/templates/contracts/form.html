@@ -34,16 +34,16 @@
   <div class="grid-2">
     <div class="field">
       <label>Müşteri *</label>
-      <!-- prettier-ignore -->
       <select name="customer_id" id="customer_id" required>
         <option value="">— Müşteri seçin —</option>
-        {% for c in customers or [] %}
-        {% set is_selected = (selected_customer_id is not none) and ((selected_customer_id | string) == (c.id | string)) %}
-        <option value="{{ c.id }}"{% if is_selected %} selected{% endif %}>
-          {{ c.otel_adi or c.firma_unvan or c.yetkili_adi or ("Müşteri #" ~ c.id) }}{% if c.musteri_no %} ({{ c.musteri_no }}){% endif %}
+        {% for c in customers or [] %} {% set is_selected = (selected_customer_id is not none) and
+        ((selected_customer_id | string) == (c.id | string)) %}
+        <option value="{{ c.id }}" {% if is_selected %} selected{% endif %}>
+          {{ c.otel_adi or c.firma_unvan or c.yetkili_adi or ("Müşteri #" ~ c.id) }}{% if c.musteri_no %} ({{
+          c.musteri_no }}){% endif %}
         </option>
         {% endfor %}
-    </select>
+      </select>
     </div>
 
     <div class="field">
@@ -59,16 +59,30 @@
   <div class="grid-2">
     <div class="field">
       <label>Katalog Ürünü / Servis *</label>
-      <select name="customer_id" id="customer_id" required>
-        <option value="">— Müşteri seçin —</option>
-        {% for c in customers or [] %} {% set is_selected = (selected_customer_id is not none) and
-        ((selected_customer_id | string) == (c.id | string)) %}
-        <option value="{{ c.id }}" {% if is_selected %} selected{% endif %}>
-          {{ c.otel_adi or c.firma_unvan or c.yetkili_adi or ("Müşteri #" ~ c.id) }}{% if c.musteri_no %} ({{
-          c.musteri_no }}){% endif %}
+      <select name="product_id" id="product_select" onchange="onCatalogProductChange()">
+        <option value="">— Katalog ürünü seçin —</option>
+        {% for p in products or [] %} {% set pid = p.id if p.id is defined else p.get("id") %} {% set pname = p.name if
+        p.name is defined else (p.get("name") or p.get("paket_adi") or ("Ürün #" ~ pid)) %} {% set pprice = p.price if
+        p.price is defined else (p.get("price") or p.get("fiyat") or "") %}
+        <option value="{{ pid }}" data-name="{{ pname }}" data-price="{{ pprice }}">
+          {{ pname }}{% if pprice != "" %} ({{ pprice }} TL){% endif %}
         </option>
         {% endfor %}
       </select>
+      {% if catalog_debug is defined and catalog_debug %}
+      <div
+        style="
+          background: #fff3cd;
+          color: #333;
+          padding: 6px 10px;
+          margin-top: 6px;
+          border: 1px solid #ffc107;
+          font-family: monospace;
+          font-size: 12px;
+        ">
+        <strong>urunler debug:</strong> {{ catalog_debug }}
+      </div>
+      {% endif %}
     </div>
 
     <div class="field">
@@ -142,6 +156,14 @@
 
   const CATALOG_PRICES = getCatalogPrices();
 
+  function normalizeNumber(val) {
+    if (val === null || val === undefined || val === "") return "";
+    if (typeof val === "number") return Number.isFinite(val) ? String(val) : "";
+    const cleaned = String(val).trim().replace(/\s+/g, "").replace(",", ".");
+    const num = Number(cleaned);
+    return Number.isFinite(num) ? String(num) : "";
+  }
+
   function onCatalogProductChange() {
     const sel = document.getElementById("product_select");
     const nameInput = document.getElementById("product_name");
@@ -154,21 +176,30 @@
       return;
     }
 
+    const pId = opt.value;
     const pName = opt.getAttribute("data-name") || "";
     const pPrice = opt.getAttribute("data-price") || "";
 
     nameInput.value = pName;
 
-    if (CATALOG_PRICES && Object.prototype.hasOwnProperty.call(CATALOG_PRICES, pName)) {
-      const val = CATALOG_PRICES[pName];
-      if (val !== null && val !== undefined && val !== "") {
-        priceInput.value = val;
+    // Önce ürün ID'sine, sonra ürün adına göre fiyat sözlüğünü kontrol et
+    if (CATALOG_PRICES) {
+      const matchedVal = Object.prototype.hasOwnProperty.call(CATALOG_PRICES, pId)
+        ? CATALOG_PRICES[pId]
+        : Object.prototype.hasOwnProperty.call(CATALOG_PRICES, pName)
+          ? CATALOG_PRICES[pName]
+          : null;
+
+      const normalized = normalizeNumber(matchedVal);
+      if (normalized !== "") {
+        priceInput.value = normalized;
         return;
       }
     }
 
-    if (pPrice !== "") {
-      priceInput.value = pPrice;
+    const fallbackPrice = normalizeNumber(pPrice);
+    if (fallbackPrice !== "") {
+      priceInput.value = fallbackPrice;
     }
   }
 </script>
