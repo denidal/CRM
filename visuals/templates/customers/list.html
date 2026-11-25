@@ -59,6 +59,9 @@
           <div class="actions" style="justify-content: flex-end">
             <a class="btn ghost sm" href="/customers/{{ c.id }}">Kart</a>
             <a class="btn ghost sm green" href="/servisler/new?customer_id={{ c.id }}">+ Servis</a>
+            <button type="button" class="btn ghost sm" onclick="openLocationModal({{ c.id }}, '{{ c.otel_adi | e }}')">
+              Lokasyon Ekle
+            </button>
           </div>
         </td>
       </tr>
@@ -70,4 +73,119 @@
     </tbody>
   </table>
 </section>
+
+<!-- Arka planda lokasyon ekleme penceresi -->
+<div
+  id="location-modal"
+  style="
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+  ">
+  <div class="panel" style="width: 100%; max-width: 480px; margin: 16px">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px">
+      <h3 id="loc-modal-title" style="margin: 0">Lokasyon Ekle</h3>
+      <button type="button" class="btn ghost sm" onclick="closeLocationModal()">✕</button>
+    </div>
+
+    <form id="location-form" onsubmit="submitLocationBg(event)">
+      <input type="hidden" id="loc-customer-id" name="customer_id" />
+
+      <div style="margin-bottom: 10px">
+        <label style="display: block; font-size: 0.875rem; margin-bottom: 4px">Lokasyon Adı *</label>
+        <input
+          type="text"
+          name="location_name"
+          required
+          placeholder="Servisin alınacağı lokasyon adı"
+          style="width: 100%" />
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px">
+        <div>
+          <label style="display: block; font-size: 0.875rem; margin-bottom: 4px">İl</label>
+          <input type="text" name="il" placeholder="Örn: İstanbul" style="width: 100%" />
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.875rem; margin-bottom: 4px">İlçe</label>
+          <input type="text" name="ilce" placeholder="Örn: Beşiktaş" style="width: 100%" />
+        </div>
+      </div>
+
+      <div style="margin-bottom: 12px">
+        <label style="display: block; font-size: 0.875rem; margin-bottom: 4px">Açık Adres</label>
+        <textarea name="otel_adres" rows="2" placeholder="Lokasyon adresi..." style="width: 100%"></textarea>
+      </div>
+
+      <div id="loc-feedback" style="font-size: 0.875rem; margin-bottom: 10px; display: none"></div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 8px">
+        <button type="button" class="btn ghost" onclick="closeLocationModal()">İptal</button>
+        <button id="loc-submit-btn" type="submit" class="btn green">Kaydet</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openLocationModal(customerId, customerName) {
+    document.getElementById("loc-customer-id").value = customerId;
+    document.getElementById("loc-modal-title").textContent = `Lokasyon Ekle — ${customerName}`;
+    const fb = document.getElementById("loc-feedback");
+    fb.style.display = "none";
+    fb.textContent = "";
+    document.getElementById("location-form").reset();
+    document.getElementById("loc-customer-id").value = customerId;
+    document.getElementById("location-modal").style.display = "flex";
+  }
+
+  function closeLocationModal() {
+    document.getElementById("location-modal").style.display = "none";
+  }
+
+  async function submitLocationBg(event) {
+    event.preventDefault();
+    const form = event.target;
+    const customerId = document.getElementById("loc-customer-id").value;
+    const btn = document.getElementById("loc-submit-btn");
+    const fb = document.getElementById("loc-feedback");
+
+    const payload = Object.fromEntries(new FormData(form).entries());
+    btn.disabled = true;
+    btn.textContent = "Kaydediliyor...";
+    fb.style.display = "none";
+
+    try {
+      const resp = await fetch(`/customers/${customerId}/locations/json`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+
+      if (!resp.ok || !data.ok) {
+        fb.style.display = "block";
+        fb.style.color = "#c62828";
+        fb.textContent = data.error || "Lokasyon kaydedilemedi.";
+        return;
+      }
+
+      fb.style.display = "block";
+      fb.style.color = "#2e7d32";
+      fb.textContent = `"${data.location.label}" kaydedildi (Tekil Lokasyon Kodu: ${data.location.lokasyon_kodu}).`;
+      setTimeout(() => closeLocationModal(), 900);
+    } catch (err) {
+      fb.style.display = "block";
+      fb.style.color = "#c62828";
+      fb.textContent = "Ağ hatası oluştu.";
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Kaydet";
+    }
+  }
+</script>
 {% endblock %}

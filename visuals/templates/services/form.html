@@ -11,6 +11,23 @@
     color: #111827 !important;
     background-color: #ffffff !important;
   }
+  .customer-top-bar {
+    border: 1px solid #bfdbfe;
+    background: #eff6ff !important;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+  .customer-id-badge {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #1d4ed8 !important;
+    color: #ffffff !important;
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
   .sub-panel {
     border: 1px solid #cbd5e1;
     background: #f8fafc !important;
@@ -33,7 +50,7 @@
   <div>
     <h1>Yeni Servis</h1>
     <div class="page-meta">
-      Müşteri ve lokasyon seçin; servis tipine göre hız, taahhüt, Kabin U ve IP Blok tutarları hesaplansın
+      Müşteri ID'sine göre müşteri ve lokasyon seçin; hız, taahhüt, Kabin U ve IP Blok tutarları hesaplansın
     </div>
   </div>
   <a class="btn ghost" href="/servisler">Servis Listesi</a>
@@ -50,53 +67,65 @@
   class="panel"
   style="max-width: 820px"
   data-catalog-prices="{{ (prices or {}) | tojson | e }}">
-  <!-- 1. MÜŞTERİ VE LOKASYON -->
-  <div class="grid-2">
-    <div class="field">
-      <label>Müşteri *</label>
-      <select name="customer_id" id="customer_id" onchange="onCustomerChange()" required>
-        <option value="">— Müşteri seçin —</option>
-        {% for c in customers or [] %} {% set is_selected = (selected_customer_id is not none) and
-        ((selected_customer_id | string) == (c.id | string)) %}
-        <option value="{{ c.id }}" {% if is_selected %} selected{% endif %}>
-          {{ c.otel_adi or c.firma_unvan or c.yetkili_adi or ("Müşteri #" ~ c.id) }}{% if c.musteri_no %} ({{
-          c.musteri_no }}){% endif %}
-        </option>
-        {% endfor %}
-      </select>
-    </div>
+  <!-- 1. ÜST MÜŞTERİ (MÜŞTERİ ID BAZLI) VE LOKASYON -->
+  <div class="customer-top-bar">
+    <div class="grid-2" style="align-items: start">
+      <div class="field" style="margin-bottom: 0">
+        <label>Müşteri (Müşteri ID) *</label>
+        <select name="customer_id" id="customer_id" onchange="onCustomerChange()" required>
+          <option value="">— Müşteri seçin —</option>
+          {% for c in customers or [] %} {% set cid_code = c.musteri_no or ("MST%03d" | format(c.id)) %} {% set
+          is_selected = (selected_customer_id is not none) and ((selected_customer_id | string) == (c.id | string)) %}
+          <option
+            value="{{ c.id }}"
+            data-musteri-id="{{ cid_code }}"
+            data-musteri-name="{{ c.otel_adi or c.firma_unvan or c.yetkili_adi or ('Müşteri #' ~ c.id) }}"
+            {%
+            if
+            is_selected
+            %}selected{%
+            endif
+            %}>
+            {{ cid_code }} — {{ c.otel_adi or c.firma_unvan or c.yetkili_adi or ("Müşteri #" ~ c.id) }}
+          </option>
+          {% endfor %}
+        </select>
+        <div id="active_musteri_id_pill" class="customer-id-badge">Müşteri ID: —</div>
+      </div>
 
-    <div class="field">
-      <label>Kayıtlı Lokasyon</label>
-      <select name="location_id" id="location_id" onchange="onLocationSelectChange()">
-        <option value="">— Kayıtlı lokasyon seçin —</option>
-        {% for loc in locations or [] %} {% set lid = loc.id if loc.id is defined else loc.get("id") %} {% set llabel =
-        loc.label if loc.label is defined else (loc.get("label") or loc.get("otel_adres") or ("Lokasyon #" ~ lid)) %} {%
-        set lcode = loc.adres_kodu if loc.adres_kodu is defined else (loc.get("adres_kodu") or "") %} {% set lcity =
-        loc.il if loc.il is defined else (loc.get("il") or "") %} {% set ldist = loc.ilce if loc.ilce is defined else
-        (loc.get("ilce") or "") %} {% set laddr = loc.otel_adres if loc.otel_adres is defined else
-        (loc.get("otel_adres") or "") %} {% set is_loc_sel = (selected_location_id is not none) and
-        ((selected_location_id | string) == (lid | string)) %}
-        <option
-          value="{{ lid }}"
-          data-label="{{ llabel }}"
-          data-code="{{ lcode }}"
-          data-city="{{ lcity }}"
-          data-district="{{ ldist }}"
-          data-address="{{ laddr }}"
-          {%
-          if
-          is_loc_sel
-          %}
-          selected{%
-          endif
-          %}>
-          {{ llabel }}{% if lcode %} [{{ lcode }}]{% endif %}{% if lcity or ldist %} ({{ ldist }}{% if lcity and ldist
-          %}/{% endif %}{{ lcity }}){% endif %}
-        </option>
-        {% endfor %}
-        <option value="__new__">+ Yeni Lokasyon Ekle</option>
-      </select>
+      <div class="field" style="margin-bottom: 0">
+        <label>Kayıtlı Lokasyon</label>
+        <select name="location_id" id="location_id" onchange="onLocationSelectChange()">
+          <option value="">— Kayıtlı lokasyon seçin —</option>
+          {% for loc in locations or [] %} {% set is_map = loc is mapping %} {% set lid = loc.get("id") if is_map else
+          loc.id %} {% set llabel = (loc.get("label") or loc.get("otel_adres") or ("Lokasyon #" ~ (lid or ""))) if
+          is_map else (loc.label or loc.otel_adres or ("Lokasyon #" ~ (lid or ""))) %} {% set lcode =
+          (loc.get("lokasyon_kodu") or loc.get("adres_kodu") or "") if is_map else ((loc.lokasyon_kodu if
+          loc.lokasyon_kodu is defined and loc.lokasyon_kodu else "") or (loc.adres_kodu if loc.adres_kodu is defined
+          and loc.adres_kodu else "")) %} {% set lcity = (loc.get("il") or "") if is_map else (loc.il or "") %} {% set
+          ldist = (loc.get("ilce") or "") if is_map else (loc.ilce or "") %} {% set laddr = (loc.get("otel_adres") or
+          "") if is_map else (loc.otel_adres or "") %} {% set is_loc_sel = (selected_location_id is not none) and
+          ((selected_location_id | string) == (lid | string)) %}
+          <option
+            value="{{ lid }}"
+            data-label="{{ llabel }}"
+            data-code="{{ lcode }}"
+            data-city="{{ lcity }}"
+            data-district="{{ ldist }}"
+            data-address="{{ laddr }}"
+            {%
+            if
+            is_loc_sel
+            %}selected{%
+            endif
+            %}>
+            {{ llabel }}{% if lcode %} [{{ lcode }}]{% endif %}{% if lcity or ldist %} ({{ ldist }}{% if lcity and ldist
+            %}/{% endif %}{{ lcity }}){% endif %}
+          </option>
+          {% endfor %}
+          <option value="__new__">+ Yeni Lokasyon Ekle</option>
+        </select>
+      </div>
     </div>
   </div>
 
@@ -109,8 +138,8 @@
     <h3 style="margin: 0 0 10px 0">Yeni Lokasyon Ekle</h3>
     <div class="grid-3">
       <div class="field">
-        <label>Lokasyon Adı / Kodu *</label>
-        <input name="lokasyon_adi" id="lokasyon_adi" placeholder="Örn: Ana Bina / LOC-01" />
+        <label>Lokasyon Adı *</label>
+        <input name="lokasyon_adi" id="lokasyon_adi" placeholder="Örn: Ana Bina / Şube" />
       </div>
       <div class="field">
         <label>İl</label>
@@ -237,20 +266,14 @@
   </div>
 
   <h2>Teknik Bilgiler (Opsiyonel)</h2>
-  <div class="grid-2">
-    <div class="field">
-      <label>POP</label>
-      <select name="pop_id">
-        <option value="">— yok —</option>
-        {% for p in pops or [] %}
-        <option value="{{ p.id }}">{{ p.pop_kodu }} — {{ p.pop_adi }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="field">
-      <label>RADIUS Kullanıcı Adı</label>
-      <input name="radius_username" placeholder="opsiyonel" />
-    </div>
+  <div class="field" style="max-width: 380px">
+    <label>POP</label>
+    <select name="pop_id">
+      <option value="">— yok —</option>
+      {% for p in pops or [] %}
+      <option value="{{ p.id }}">{{ p.pop_kodu }} — {{ p.pop_adi }}</option>
+      {% endfor %}
+    </select>
   </div>
 
   <div class="toolbar" style="margin-top: 1rem">
@@ -279,6 +302,21 @@
     return `${n.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`;
   }
 
+  function syncMusteriBadge() {
+    const custSel = document.getElementById("customer_id");
+    const pill = document.getElementById("active_musteri_id_pill");
+    if (!custSel || !pill) return;
+
+    const opt = custSel.options[custSel.selectedIndex];
+    if (!opt || !opt.value) {
+      pill.textContent = "Müşteri ID: —";
+      return;
+    }
+    const mid = opt.dataset.musteriId || `MST${String(opt.value).padStart(3, "0")}`;
+    const mname = opt.dataset.musteriName || "";
+    pill.textContent = mname ? `Müşteri ID: ${mid} · ${mname}` : `Müşteri ID: ${mid}`;
+  }
+
   function parseCatalog() {
     const speedsByType = { p2p: {}, metro: {}, wifi: {} };
     const kabinItems = [];
@@ -288,7 +326,6 @@
       const key = String(rawKey).trim();
       const numVal = toNum(rawVal);
 
-      // metro_tarife_100, metro_12_100, metro_24_100, wifi_tarife_50, p2p_12_250, etc.
       const svcMatch = key.match(/^(p2p|metro|wifi)_(tarife|12|24)_(.+)$/i);
       if (svcMatch) {
         const g = svcMatch[1].toLowerCase();
@@ -309,7 +346,6 @@
         continue;
       }
 
-      // kabin_fiyat_8, kabin_fiyat_14, etc.
       const kabinMatch = key.match(/^kabin_fiyat_(.+)$/i);
       if (kabinMatch) {
         const uVal = kabinMatch[1];
@@ -321,7 +357,6 @@
         continue;
       }
 
-      // ip_fiyat_32, ip_fiyat_31, etc.
       const ipMatch = key.match(/^ip_fiyat_(.+)$/i);
       if (ipMatch) {
         const subVal = ipMatch[1].replace(/^\//, "");
@@ -361,10 +396,15 @@
   }
 
   window.onCustomerChange = function () {
+    syncMusteriBadge();
     const custSel = document.getElementById("customer_id");
-    if (!custSel || !custSel.value) return;
+    if (!custSel) return;
     const url = new URL(window.location.href);
-    url.searchParams.set("customer_id", custSel.value);
+    if (custSel.value) {
+      url.searchParams.set("customer_id", custSel.value);
+    } else {
+      url.searchParams.delete("customer_id");
+    }
     url.searchParams.delete("location_id");
     window.location.href = url.toString();
   };
@@ -395,6 +435,8 @@
     const parts = [];
     if (opt.dataset.label) parts.push(`Lokasyon: ${opt.dataset.label}`);
     if (opt.dataset.code) parts.push(`Kod: ${opt.dataset.code}`);
+    const cityDist = [opt.dataset.district, opt.dataset.city].filter(Boolean).join("/");
+    if (cityDist) parts.push(cityDist);
     if (infoEl) {
       infoEl.textContent = parts.join(" · ");
       infoEl.style.display = parts.length ? "block" : "none";
@@ -505,6 +547,7 @@
     }
   };
 
+  syncMusteriBadge();
   populateAddons();
   window.onLocationSelectChange();
   window.recalculateAmount();

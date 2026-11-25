@@ -49,6 +49,50 @@
   </div>
 </section>
 
+<!-- LOKASYONLAR -->
+<section class="panel" id="addresses">
+  <div class="panel-head">
+    <h2>Lokasyonlar</h2>
+    <button
+      type="button"
+      class="btn ghost sm"
+      onclick="openLocationModal({{ customer.id }}, '{{ customer.otel_adi | e }}')">
+      + Lokasyon Ekle
+    </button>
+  </div>
+  {% if addresses %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Lokasyon</th>
+        <th>Tekil Lokasyon Kodu</th>
+        <th>İl / İlçe</th>
+        <th>Adres</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for addr in addresses %}
+      <tr>
+        <td><strong>{{ addr.label or ('Lokasyon #' ~ addr.id) }}</strong></td>
+        <td>
+          {% set code = addr.lokasyon_kodu if addr.lokasyon_kodu is defined and addr.lokasyon_kodu else addr.adres_kodu
+          %} {% if code %}
+          <span class="badge blue">{{ code }}</span>
+          {% else %}
+          <span class="muted">—</span>
+          {% endif %}
+        </td>
+        <td>{{ [addr.ilce, addr.il] | select | join(', ') or '—' }}</td>
+        <td>{{ addr.otel_adres or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted" style="margin: 0">Bu müşteriye ait kayıtlı lokasyon bulunmuyor.</p>
+  {% endif %}
+</section>
+
 <!-- BAĞLI SERVİSLER (ÖZET) -->
 <section class="panel">
   <div class="panel-head">

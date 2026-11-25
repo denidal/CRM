@@ -9,6 +9,11 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
+
+import secrets
+from fastapi.responses import JSONResponse
+
 
 from data.config.db import get_db
 from data.models.ip_block import IpBlock
@@ -332,9 +337,10 @@ def servis_new_form(
         products = []
         saved_prices = {}
 
-    locations = svc_sales.list_locations_for_customer(customer_id) if customer_id else []
     pops = PopRepository(db).list(only_active=True)
     customers = CustomerService(db).list_customers()
+    effective_customer_id = customer_id or (customers[0].id if customers else None)
+    locations = _load_customer_locations(db, svc_sales, effective_customer_id)
 
     return templates.TemplateResponse(
         request,
@@ -347,7 +353,7 @@ def servis_new_form(
             "prices": saved_prices,
             "statuses": SERVICE_STATUSES,
             "commitments": COMMITMENT_OPTIONS,
-            "selected_customer_id": customer_id,
+            "selected_customer_id": effective_customer_id,
             "selected_location_id": location_id,
             "today": date.today().isoformat(),
             "error": None,
@@ -465,6 +471,30 @@ def customer_create_form(request: Request):
         {"title": "Yeni Müşteri", "error": None, "musteri_tipleri": MUSTERI_TIPLERI},
     )
 
+def _load_customer_locations(
+    db: Session,
+    svc_sales: ServiceSaleService,
+    customer_id: int | None,
+    customers: list | None = None,
+):
+    target_id = customer_id
+    if not target_id:
+        customer_rows = customers if customers is not None else CustomerService(db).list_customers()
+        if customer_rows:
+            target_id = customer_rows[0].id
+    if not target_id:
+        return []
+    try:
+        locs = svc_sales.list_locations_for_customer(target_id) or []
+    except Exception:
+        locs = []
+    if not locs:
+        try:
+            cust = CustomerService(db).ensure_addresses(target_id)
+            locs = list(cust.addresses or [])
+        except Exception:
+            locs = []
+    return locs
 
 @router.post("/customers/new")
 async def customer_create_submit(request: Request, db: Session = Depends(get_db)):
@@ -534,6 +564,67 @@ def customer_detail(request: Request, customer_id: int, db: Session = Depends(ge
         },
     )
 
+def _generate_unique_location_code(customer_id: int, existing_codes: set[str] | None = None) -> str:
+    existing = existing_codes or set()
+    for _ in range(10):
+        code = f"L{customer_id}-{secrets.token_hex(2).upper()}"
+        if code not in existing:
+            return code
+    return f"L{customer_id}-{secrets.token_hex(3).upper()}"
+
+
+@router.post("/customers/{customer_id}/locations/json")
+async def customer_add_location_json(
+    request: Request,
+    customer_id: int,
+    db: Session = Depends(get_db),
+):
+    content_type = request.headers.get("content-type", "")
+    payload = await request.json() if "application/json" in content_type else dict(await request.form())
+
+    location_name = (payload.get("location_name") or payload.get("label") or "").strip()
+    if not location_name:
+        return JSONResponse(
+            {"ok": False, "error": "Lokasyon adı zorunludur."},
+            status_code=400,
+        )
+
+    existing_codes = {
+        (getattr(addr, "lokasyon_kodu", None) or getattr(addr, "adres_kodu", "") or "").strip()
+        for addr in (CustomerService(db).ensure_addresses(customer_id).addresses or [])
+    }
+    lokasyon_kodu = _generate_unique_location_code(customer_id, existing_codes)
+
+    data = {
+        "label": location_name,
+        "lokasyon_kodu": lokasyon_kodu,
+        "adres_kodu": lokasyon_kodu,
+        "il": (payload.get("il") or "").strip() or None,
+        "ilce": (payload.get("ilce") or "").strip() or None,
+        "otel_adres": (payload.get("otel_adres") or payload.get("adres") or "").strip() or None,
+        "is_primary": False,
+    }
+
+    try:
+        saved = CustomerService(db).add_address(customer_id, data)
+    except ValueError as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+
+    return JSONResponse(
+        {
+            "ok": True,
+            "location": {
+                "id": getattr(saved, "id", None),
+                "customer_id": customer_id,
+                "lokasyon_kodu": getattr(saved, "lokasyon_kodu", None) or lokasyon_kodu,
+                "label": getattr(saved, "label", location_name),
+                "il": getattr(saved, "il", data["il"]),
+                "ilce": getattr(saved, "ilce", data["ilce"]),
+                "otel_adres": getattr(saved, "otel_adres", data["otel_adres"]),
+            },
+        },
+        status_code=201,
+    )
 
 @router.post("/customers/{customer_id}/update")
 async def customer_update(request: Request, customer_id: int, db: Session = Depends(get_db)):
@@ -563,6 +654,54 @@ def customer_delete_address(customer_id: int, address_id: int, db: Session = Dep
     except ValueError as exc:
         return HTMLResponse(str(exc), status_code=400)
     return RedirectResponse(f"/customers/{customer_id}#addresses", status_code=303)
+
+@router.post("/customers/{customer_id}/addresses/json")
+async def customer_add_address_json(
+    request: Request,
+    customer_id: int,
+    db: Session = Depends(get_db),
+):
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        payload = await request.json()
+    else:
+        raw = await request.form()
+        payload = dict(raw)
+
+    data = {
+        "label": (payload.get("label") or "").strip() or "Yeni Lokasyon",
+        "il": (payload.get("il") or "").strip() or None,
+        "ilce": (payload.get("ilce") or "").strip() or None,
+        "mahalle": (payload.get("mahalle") or "").strip() or None,
+        "sokak_cadde": (payload.get("sokak_cadde") or "").strip() or None,
+        "dis_kapi_no": (payload.get("dis_kapi_no") or "").strip() or None,
+        "ic_kapi_no": (payload.get("ic_kapi_no") or "").strip() or None,
+        "adres_kodu": (payload.get("adres_kodu") or "").strip() or None,
+        "posta_kodu": (payload.get("posta_kodu") or "").strip() or None,
+        "otel_adres": (payload.get("otel_adres") or "").strip() or None,
+        "is_primary": str(payload.get("is_primary", "")).lower() in {"1", "true", "on", "yes"},
+    }
+
+    try:
+        addr = CustomerService(db).add_address(customer_id, data)
+    except ValueError as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+
+    return JSONResponse(
+        {
+            "ok": True,
+            "address": {
+                "id": addr.id,
+                "customer_id": customer_id,
+                "label": addr.label,
+                "il": addr.il,
+                "ilce": addr.ilce,
+                "otel_adres": addr.otel_adres,
+                "adres_kodu": addr.adres_kodu,
+            },
+        },
+        status_code=201,
+    )
 
 
 @router.get("/customers/{customer_id}/services/new", response_class=HTMLResponse)

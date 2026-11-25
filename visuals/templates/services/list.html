@@ -3,7 +3,8 @@
   <div>
     <h1>{% if customer %}Servisler — {{ customer.otel_adi }}{% else %}Servisler{% endif %}</h1>
     <div class="page-meta">
-      {% if customer %}Müşteri #{{ customer.id }}{% else %}Toplam {{ list_items|length }} servis{% endif %}
+      {% if customer %} Müşteri ID: {{ customer.musteri_no or ("MST%03d" | format(customer.id)) }} · Toplam {{
+      list_items|length }} servis {% else %} Toplam {{ list_items|length }} servis {% endif %}
     </div>
   </div>
   <div class="toolbar" style="margin: 0">
@@ -17,9 +18,30 @@
   </div>
 </div>
 
-<div class="service-list">
-  {% for s in list_items %} {% include "services/card.html" %} {% else %}
-  <p class="muted">Kayıtlı servis yok.</p>
-  {% endfor %}
-</div>
-{% endblock %}
+{% if list_items %} {% for grp in list_items | groupby("musteri_no") %} {% set first_item = grp.list[0] %} {% set
+cust_code = grp.grouper or (first_item.musteri_no if first_item.musteri_no is defined and first_item.musteri_no else
+("MST%03d" | format(first_item.customer_id or 0))) %} {% set cust_name = first_item.customer_name if
+first_item.customer_name is defined and first_item.customer_name else "" %} {% set cust_id = first_item.customer_id if
+first_item.customer_id is defined else "" %}
+
+<section class="panel" style="margin-bottom: 16px">
+  <div class="panel-head" style="margin-bottom: 12px">
+    <div>
+      <h2 style="margin: 0">
+        <span class="badge blue">{{ cust_code }}</span>
+        {% if cust_name %}{{ cust_name }}{% endif %}
+      </h2>
+    </div>
+    {% if cust_id %}
+    <div class="actions">
+      <a class="btn ghost sm" href="/customers/{{ cust_id }}">Kart</a>
+      <a class="btn ghost sm green" href="/servisler/new?customer_id={{ cust_id }}">+ Servis</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="service-list">{% for s in grp.list %} {% include "services/card.html" %} {% endfor %}</div>
+</section>
+{% endfor %} {% else %}
+<p class="muted">Kayıtlı servis yok.</p>
+{% endif %} {% endblock %}
